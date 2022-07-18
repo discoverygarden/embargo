@@ -1,0 +1,21 @@
+embargo.entities:
+  class: \Drupal\Core\Menu\LocalTaskDefault
+  deriver: 'Drupal\embargo\Plugin\Derivative\EmbargoLocalTasks'
+
+embargo.content:
+  title: 'Embargoes'
+  base_route: system.admin_content
+  route_name: entity.embargo.collection
+  weight: 20
+
+entity.embargo.collection:
+  title: 'Embargoes'
+  route_name: entity.embargo.collection
+  parent_id: embargo.content
+  weight: 0
+
+entity.embargo_ip_range.collection:
+  title: 'IP Ranges'
+  route_name: entity.embargo_ip_range.collection
+  parent_id: embargo.content
+  weight: 1

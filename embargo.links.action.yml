@@ -1,0 +1,18 @@
+embargo_ip_range.add_form:
+  route_name: entity.embargo_ip_range.add_form
+  title: 'Add IP Range'
+  appears_on:
+    - entity.embargo_ip_range.collection
+
+embargo.add_form:
+  route_name: entity.embargo.add_form
+  title: 'Add Embargo'
+  appears_on:
+    - entity.embargo.collection
+
+embargo.embargo_node_form:
+  route_name: entity.embargo.embargo_node_form
+  title: 'Add Embargo'
+  class: 'Drupal\embargo\Plugin\Menu\EmbargoLocalActions'
+  appears_on:
+    - entity.node.embargoes

@@ -1,0 +1,30 @@
+services:
+  logger.channel.embargo:
+    parent: logger.channel_base
+    arguments: ['embargo']
+  access_check.embargo:
+    class: Drupal\embargo\Access\EmbargoAccessCheck
+    arguments:
+      - '@entity_type.manager'
+      - '@request_stack'
+      - '@current_user'
+  embargo.query_tagger:
+    class: Drupal\embargo\Access\QueryTagger
+    arguments:
+      - '@current_user'
+      - '@request_stack'
+      - '@database'
+      - '@entity_type.manager'
+  embargo.route_subscriber:
+    class: Drupal\embargo\Routing\EmbargoRouteSubscriber
+    arguments: ['@entity_type.manager']
+    tags:
+      - { name: event_subscriber }
+  embargo.ip_range_redirect:
+    class: '\Drupal\embargo\EventSubscriber\IpRangeRedirect'
+    arguments:
+      - '@entity_type.manager'
+      - '@current_user'
+      - '@url_generator'
+    tags:
+      - { name: 'event_subscriber' }

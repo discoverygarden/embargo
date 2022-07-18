@@ -1,0 +1,8 @@
+administer embargo:
+  title: 'Administer embargo'
+  description: 'Administer embargo entities and embargo settings.'
+  restrict access: true
+bypass embargo access:
+  title: 'Bypass embargo access control'
+  description: 'Bypass access control enforced by embargo entities.'
+  restrict access: true
