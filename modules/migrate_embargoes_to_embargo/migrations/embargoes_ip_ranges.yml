@@ -1,0 +1,21 @@
+---
+id: embargoes_ip_ranges
+label: Transform "embargoes" IP Range config entities into "embargo" IP range content entities.
+source:
+  plugin: migrate_embargoes_to_embargo.source.entity
+  track_changes: true
+  entity_type: embargoes_ip_range_entity
+  keys:
+    id:
+      type: string
+  source_module: embargoes
+destination:
+  plugin: entity:embargo_ip_range
+  validate: true
+  translations: false
+process:
+  label: label
+  ranges: ranges
+  proxy: proxy_url
+migration_tags:
+  - migrate_embargoes_to_embargo
