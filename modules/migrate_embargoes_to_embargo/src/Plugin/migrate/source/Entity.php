@@ -6,6 +6,8 @@ use Drupal\migrate\Plugin\migrate\source\SourcePluginBase;
 use Drupal\migrate\Plugin\MigrationInterface;
 
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Entity\EntityStorageInterface;
+use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -40,7 +42,7 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
     parent::__construct($configuration, $plugin_id, $plugin_definition, $migration);
 
     $this->entityTypeManager = $entity_type_manager;
-    $this->entityTypeId = $this->configuration['entity_type']
+    $this->entityTypeId = $this->configuration['entity_type'];
   }
 
   /**
@@ -65,7 +67,14 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
   protected function getType() : EntityTypeInterface {
     return $this->entityTypeManager->getDefinition($this->entityTypeId);
   }
-  protected function getStorage() : StorageInterface {
+
+  /**
+   * Get the storage for the given type.
+   *
+   * @return \Drupal\Core\Entity\EntityStorageInterface
+   *   The storage for the given type.
+   */
+  protected function getStorage() {
     return $this->entityTypeManager->getStorage($this->entityTypeId);
   }
 
@@ -82,7 +91,8 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
    */
   public function fields() {
     $properties = $this->getType()->getTypedData()->getProperties();
-    return array_map([$this, 'mapProp'], $properties);
+    $mapped = array_map([$this, 'mapProp'], $properties);
+    return $mapped;
   }
 
   /**
@@ -99,9 +109,15 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
     // XXX: Loading all entities like this would fall apart if there was a
     // particularly large number of them; however, we do not expect this to be
     // used with terribly many at the moment... like only 10s or 100s.
-    $entities = $this->getStorage()->loadMultiple();
-    foreach ( as $id => $entity) {
-      yield $id => $entity->toArray();
+    $storage = $this->getStorage();
+    foreach ($storage->getQuery()->execute() as $id) {
+      $array = $storage->load($id)->toArray();
+      foreach ($this->getIds() as $key => $info) {
+        if (is_array($array[$key])) {
+          $array[$key] = reset($array[$key])['value'];
+        }
+      }
+      yield $id => $array;
     }
   }
 
@@ -118,6 +134,26 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
    */
   public function __toString() {
     return $this->t('"@type" entity source', ['@type' => $this->entityTypeId]);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function __sleep() {
+    $vars = parent::__sleep();
+
+    $to_suppress = [
+      // XXX: Avoid serializing some DB things that we don't need.
+      'iterator',
+    ];
+    foreach ($to_suppress as $value) {
+      $key = array_search($value, $vars);
+      if ($key !== FALSE) {
+        unset($vars[$key]);
+      }
+    }
+
+    return $vars;
   }
 
 }

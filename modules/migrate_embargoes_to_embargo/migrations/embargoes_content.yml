@@ -18,11 +18,14 @@ process:
   expiration_type: expiration_type
   expiration_date: expiration_date
   exempt_ips:
-    - plugin: get
+    - plugin: sub_process
       source: exempt_ips
-    - plugin: multiple_values
-    - plugin: migration_lookup
-      migration: embargoes_ip_ranges
+      process:
+        target_id:
+          - plugin: migration_lookup
+            source: target_id
+            migration: embargoes_ip_ranges
+    - plugin: dgi_migrate.process.log
   exempt_users: exempt_users
   additional_emails: additional_emails
   embargoed_node: embargoed_node
