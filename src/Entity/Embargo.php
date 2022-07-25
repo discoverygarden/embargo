@@ -125,7 +125,7 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
         'type' => 'datetime_time_ago',
         'label' => 'hidden',
       ])
-      ->setSetting('datetime_type', 'datetime');
+      ->setSetting('datetime_type', 'date');
 
     $fields['exempt_ips'] = BaseFieldDefinition::create('entity_reference')
       ->setLabel(t('Exempt IP Range'))
