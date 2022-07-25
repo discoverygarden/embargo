@@ -19,11 +19,7 @@ Otherwise, you may see errors in the messages for the `embargoes_content`
 migration such as:
 
 *
-```
-[embargo]: embargoed_node.0.target_id=This entity (<em class="placeholder">node</em>: <em class="placeholder">5</em>) cannot be referenced.
-```
+  > [embargo]: embargoed_node.0.target_id=This entity (<em class="placeholder">node</em>: <em class="placeholder">5</em>) cannot be referenced.
 
 *
-```
-[embargo]: exempt_users.0.target_id=This entity (<em class="placeholder">user</em>: <em class="placeholder">2</em>) cannot be referenced.
-```
+  > [embargo]: exempt_users.0.target_id=This entity (<em class="placeholder">user</em>: <em class="placeholder">2</em>) cannot be referenced.
