@@ -6,7 +6,7 @@ use Drupal\migrate\Plugin\migrate\source\SourcePluginBase;
 use Drupal\migrate\Plugin\MigrationInterface;
 
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\Entity\EntityStorageInterface;
+use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -27,6 +27,11 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
    */
   protected EntityTypeManagerInterface $entityTypeManager;
 
+  /**
+   * The ID of the target entity type.
+   *
+   * @var string
+   */
   protected string $entityTypeId;
 
   /**
@@ -64,6 +69,12 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
     );
   }
 
+  /**
+   * Helper; lookup the definition of the target type.
+   *
+   * @return \Drupal\Core\Entity\EntityTypeManagerInterface
+   *   The looked-up type.
+   */
   protected function getType() : EntityTypeInterface {
     return $this->entityTypeManager->getDefinition($this->entityTypeId);
   }
@@ -78,6 +89,12 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
     return $this->entityTypeManager->getStorage($this->entityTypeId);
   }
 
+  /**
+   * Helper; map properties to descriptions thereof.
+   *
+   * @return string[]
+   *   An array mapping property machine names to descriptions.
+   */
   protected function mapProp(TypedDataInterface $property) {
     $def = $property->getDataDefinition();
     return $this->t('@label: @description', [
