@@ -25,7 +25,6 @@ process:
           - plugin: migration_lookup
             source: target_id
             migration: embargoes_ip_ranges
-    - plugin: dgi_migrate.process.log
   exempt_users: exempt_users
   additional_emails: additional_emails
   embargoed_node: embargoed_node
