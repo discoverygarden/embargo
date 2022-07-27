@@ -1,3 +1,4 @@
+---
 services:
   logger.channel.embargo:
     parent: logger.channel_base

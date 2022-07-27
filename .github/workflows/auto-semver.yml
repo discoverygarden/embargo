@@ -1,3 +1,4 @@
+---
 name: Auto Semver
 on:
   pull_request_target:

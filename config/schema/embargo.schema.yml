@@ -1,3 +1,4 @@
+---
 condition.plugin.embargo_embargoed_condition:
   type: condition.plugin
   mapping:
