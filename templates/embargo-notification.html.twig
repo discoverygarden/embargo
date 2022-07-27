@@ -31,14 +31,31 @@
             </h2>
             <p>
               {% if embargo.type == 'File' %}
-                {{ 'Access to all associated files of this resource is restricted' | t }}:
+                {% if embargo.indefinite %}
+                  {% trans %}
+                    Access to all associated files of this resource is
+                    restricted <strong>indefinitely</strong>.
+                  {% endtrans %}
+                {% else %}
+                  {% trans %}
+                    Access to all associated files of this resource is
+                    restricted until
+                    <strong>{{ embargo.expiration_date }}</strong>.
+                  {% endtrans %}
+                {% endif %}
               {% else %}
-                {{ 'Access to this resource and all associated files is restricted' | t }}:
-              {% endif %}
-              {% if embargo.indefinite %}
-                <strong>{{ 'Indefinitely' | t }}</strong>
-              {% else %}
-                <strong>{{ embargo.expiration_date }}</strong>
+                {% if embargo.indefinite %}
+                  {% trans %}
+                    Access to this resource and all associated files is
+                    restricted <strong>indefinitely</strong>.
+                  {% endtrans %}
+                {% else %}
+                  {% trans %}
+                    Access to this resource and all associated files is
+                    restricted until
+                    <strong>{{ embargo.expiration_date }}</strong>.
+                  {% endtrans %}
+                {% endif %}
               {% endif %}
               {% if not embargo.exempt %}
                 <p>{{ message }}</p>
