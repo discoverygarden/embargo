@@ -11,3 +11,6 @@ embargo.settings:
     contact_email:
       type: email
       label: 'Contact email for embargo notifications'
+    notification_message:
+      type: text
+      label: 'Embargo notification message'
