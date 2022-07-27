@@ -1,3 +1,4 @@
+---
 embargo_ip_range.add_form:
   route_name: entity.embargo_ip_range.add_form
   title: 'Add IP Range'

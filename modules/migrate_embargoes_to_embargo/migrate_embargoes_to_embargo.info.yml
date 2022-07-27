@@ -1,0 +1,10 @@
+---
+name: Migrate embargoes to embargo
+type: module
+description: >
+  Migrations and plugins to handle migrating from the older "embargoes" module
+  to this newer "embargo" module.
+package: Embargo
+core_version_requirement: ^8 || ^9
+dependencies:
+  - embargo:embargo

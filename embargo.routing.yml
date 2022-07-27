@@ -1,3 +1,4 @@
+---
 embargo.settings:
   path: '/admin/config/content/embargo'
   defaults:
@@ -5,22 +6,6 @@ embargo.settings:
     _title: 'Embargo Settings'
   requirements:
     _permission: 'administer embargo'
-
-#embargo.embargo_node:
-#  path: '/embargo/node/{node}/add'
-#  defaults:
-#    _controller: 'controller.entity_form:getContentResult'
-#    _entity_form: embargo.add
-#    _form: 'entity.embargo.add_form'
-#    _title_callback: '\Drupal\Core\Entity\Controller\EntityController::addTitle'
-#    entity_type_id: embargo
-#  parameters:
-#    node: entity:node
-#  options:
-#    _admin_route: 'true'
-#  requirements:
-#    node: \d+
-#    _permission: 'administer embargo'
 
 embargo.ip_access_exemption:
   path: '/embargo/ip-access-exemption'
