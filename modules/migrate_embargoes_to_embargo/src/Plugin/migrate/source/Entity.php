@@ -2,6 +2,7 @@
 
 namespace Drupal\migrate_embargoes_to_embargo\Plugin\migrate\source;
 
+use Drupal\Core\TypedData\TypedDataInterface;
 use Drupal\migrate\Plugin\migrate\source\SourcePluginBase;
 use Drupal\migrate\Plugin\MigrationInterface;
 
@@ -92,8 +93,8 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
   /**
    * Helper; map properties to descriptions thereof.
    *
-   * @return string[]
-   *   An array mapping property machine names to descriptions.
+   * @return \Drupal\Core\StringTranslation\TranslatableMarkup
+   *   A human-readable description of the given typed data property.
    */
   protected function mapProp(TypedDataInterface $property) {
     $def = $property->getDataDefinition();
@@ -150,7 +151,7 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
    * {@inheritdoc}
    */
   public function __toString() {
-    return $this->t('"@type" entity source', ['@type' => $this->entityTypeId]);
+    return "{$this->t('"@type" entity source', ['@type' => $this->entityTypeId])}";
   }
 
   /**

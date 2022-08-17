@@ -7,9 +7,12 @@ Embargo content indefinitely or till specified date, limiting access to specific
 ## Installation
 
 Install as
-[usual](https://www.drupal.org/docs/8/extending-drupal-8/installing-drupal-8-modules).
+[usual](https://www.drupal.org/docs/extending-drupal/installing-modules).
 
-@todo add notes about uninstalling `embargoes`.
+### Migrating from `embargoes`
+
+Migrations exist in the `migrate_embargoes_to_embargo` module for migrating from `embargoes`'s entities onto `embargo`'s.
+See [the module's docs for more info](modules/migrate_embargoes_to_embargo/README.md).
 
 ## Configuration
 

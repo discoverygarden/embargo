@@ -106,7 +106,7 @@ class QueryTagger {
    * @param string $type
    *   Either "node", "media" or "file".
    */
-  public function tagAccess(SelectInterface $query, $type) {
+  public function tagAccess(SelectInterface $query, string $type) {
     if (!in_array($type, ['node', 'media', 'file'])) {
       throw new \InvalidArgumentException("Unrecognized type '$type'.");
     }

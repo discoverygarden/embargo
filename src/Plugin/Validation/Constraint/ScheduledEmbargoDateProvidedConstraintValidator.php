@@ -14,12 +14,12 @@ class ScheduledEmbargoDateProvidedConstraintValidator extends ConstraintValidato
   /**
    * {@inheritdoc}
    */
-  public function validate($entity, Constraint $constraint) {
-    /** @var Drupal\embargo\Entity\EmbargoInterface $entity */
-    $scheduled = $entity->getExpirationType() == EmbargoInterface::EXPIRATION_TYPE_SCHEDULED;
+  public function validate($value, Constraint $constraint) {
+    /** @var \Drupal\embargo\EmbargoInterface $value */
+    $scheduled = $value->getExpirationType() == EmbargoInterface::EXPIRATION_TYPE_SCHEDULED;
 
     // If the resolution is other, require the order number.
-    if ($scheduled && is_null($entity->getExpirationDate())) {
+    if ($scheduled && is_null($value->getExpirationDate())) {
       $this->context->buildViolation($constraint->dateRequired)
         ->atPath('expiration_date')
         ->addViolation();

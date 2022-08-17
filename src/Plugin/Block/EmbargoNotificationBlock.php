@@ -87,7 +87,7 @@ class EmbargoNotificationBlock extends BlockBase implements ContainerFactoryPlug
    *   The plugin definition.
    * @param \Drupal\Core\Routing\ResettableStackedRouteMatchInterface $route_match
    *   A route matching interface.
-   * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
+   * @param \Drupal\Core\Http\RequestStack $request_stack
    *   The request being made to check access against.
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
    *   A configuration factory interface.
@@ -97,6 +97,9 @@ class EmbargoNotificationBlock extends BlockBase implements ContainerFactoryPlug
    *   The current user.
    * @param \Drupal\Core\Render\RendererInterface $renderer
    *   The object renderer.
+   *
+   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    */
   public function __construct(array $configuration, $plugin_id, $plugin_definition, ResettableStackedRouteMatchInterface $route_match, RequestStack $request_stack, ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entity_type_manager, AccountProxyInterface $user, RendererInterface $renderer) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);

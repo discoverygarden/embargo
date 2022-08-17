@@ -14,6 +14,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Displays a table of applicable embargoes for the given entity.
+ *
+ * Essentially, a filtered version of \Drupal\embargo\EmbargoListBuilder.
  */
 class EmbargoController extends ControllerBase {
 
@@ -60,7 +62,7 @@ class EmbargoController extends ControllerBase {
     $this->entityType = $entity_type_manager->getDefinition('embargo');
     $this->storage = $entity_type_manager->getStorage($this->entityType->id());
     $this->fields = $field_manager->getFieldDefinitions($this->entityType->id(), NULL);
-    // Exclude the node reference field as we're are rendering only those
+    // Exclude the node reference field as we are rendering only those
     // embargoes which apply to the entity provided in the url.
     foreach ($this->fields as $field_name => $definition) {
       if (
@@ -75,7 +77,7 @@ class EmbargoController extends ControllerBase {
   /**
    * {@inheritdoc}
    */
-  public static function create(ContainerInterface $container) {
+  public static function create(ContainerInterface $container) : self {
     return new static(
       $container->get('renderer'),
       $container->get('entity_type.manager'),
@@ -86,10 +88,12 @@ class EmbargoController extends ControllerBase {
   /**
    * Builds the headers for the table.
    *
+   * @see \Drupal\Core\Entity\EntityListBuilder::buildHeader()
+   *
    * @return \Drupal\Core\StringTranslation\TranslatableMarkup[]
    *   A list of headers to use for the columns.
    */
-  protected function buildHeader(): array {
+  protected function buildHeader() : array {
     $header = [];
     foreach ($this->fields as $field => $definition) {
       if (!is_null($definition->getDisplayOptions('view'))) {
@@ -103,10 +107,12 @@ class EmbargoController extends ControllerBase {
   /**
    * Builds a row for the given embargo entity.
    *
+   * @see \Drupal\Core\Entity\EntityListBuilder::buildRow()
+   *
    * @return array
    *   A render array structure of fields for this entity.
    */
-  public function buildRow(EmbargoInterface $entity) {
+  public function buildRow(EmbargoInterface $entity) : array {
     $columns = [];
     foreach ($this->fields as $field => $definition) {
       if (!is_null($definition->getDisplayOptions('view'))) {
@@ -132,6 +138,8 @@ class EmbargoController extends ControllerBase {
 
   /**
    * Gets this list's default operations.
+   *
+   * @see \Drupal\Core\Entity\EntityListBuilder::getDefaultOperations()
    *
    * @param \Drupal\embargo\EmbargoInterface $embargo
    *   The entity the operations are for.
@@ -160,7 +168,9 @@ class EmbargoController extends ControllerBase {
   }
 
   /**
-   * {@inheritdoc}
+   * Get operations to add to the listing.
+   *
+   * @see \Drupal\Core\Entity\EntityListBuilder::getOperations()
    */
   public function getOperations(EmbargoInterface $entity) {
     $operations = $this->getDefaultOperations($entity);

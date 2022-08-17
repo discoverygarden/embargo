@@ -22,7 +22,7 @@ class IpRangeAccessExemptionController extends ControllerBase {
   /**
    * Constructs an IP access denied controller.
    *
-   * @param \Symfony\Component\HttpFoundation\Request $request
+   * @param \Symfony\Component\HttpFoundation\Request|null $request
    *   The current request.
    */
   public function __construct(Request $request = NULL) {

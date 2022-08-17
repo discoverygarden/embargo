@@ -14,18 +14,18 @@ class ValidCidrConstraintValidator extends ConstraintValidator {
   /**
    * {@inheritdoc}
    */
-  public function validate($items, Constraint $constraint) {
-    /** @var \Drupal\Core\Field\FieldItemList $items */
+  public function validate($value, Constraint $constraint) {
+    /** @var \Drupal\Core\Field\FieldItemList $value */
     /** @var ValidCidrConstraint $constraint */
-    if (!$item = $items->first()) {
+    if (!$item = $value->first()) {
       return;
     }
-    foreach ($items as $item) {
+    foreach ($value as $item) {
       $values = $item->getValue();
-      foreach ($values as $value) {
-        if (!IpRange::isValidCidr($value)) {
+      foreach ($values as $val) {
+        if (!IpRange::isValidCidr($val)) {
           $this->context->addViolation($constraint->message, [
-            '%value' => $value,
+            '%value' => $val,
           ]);
           break;
         }

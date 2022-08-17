@@ -145,7 +145,7 @@ interface EmbargoInterface extends ContentEntityInterface {
   /**
    * Gets the exempt embargo_ip_range entity for this embargo if set.
    *
-   * @return \Drupal\embargo\IpRange|null
+   * @return \Drupal\embargo\IpRangeInterface|null
    *   The exempt embargo_ip_range entity, or NULL.
    */
   public function getExemptIps(): ?IpRangeInterface;

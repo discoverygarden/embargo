@@ -69,7 +69,7 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
 
     $fields['embargo_type'] = BaseFieldDefinition::create('list_integer')
       ->setLabel(t('Embargo Type'))
-      ->setDescription(t('A <em>File</em> embargo denys access to the nodes related files and media.<br/>A <em>Node</em> embargo denys all access to the node as well as its related files and media.'))
+      ->setDescription(t('A <em>File</em> embargo denies access to the nodes related files and media.<br/>A <em>Node</em> embargo denies all access to the node as well as its related files and media.'))
       ->setInitialValue(EmbargoInterface::EMBARGO_TYPE_FILE)
       ->setDefaultValue(EmbargoInterface::EMBARGO_TYPE_FILE)
       ->setTranslatable(FALSE)
@@ -78,7 +78,7 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
       // Define this via an options provider once.
       // https://www.drupal.org/node/2329937 is completed.
       ->addPropertyConstraints('value', [
-        'AllowedValues' => ['callback' => static::class . '::getAllowedEmbargoTypes'],
+        'AllowedValues' => ['callback' => [static::class, 'getAllowedEmbargoTypes']],
       ])
       ->setDisplayOptions('form', [
         'type' => 'options_select',
@@ -91,7 +91,7 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
 
     $fields['expiration_type'] = BaseFieldDefinition::create('list_integer')
       ->setLabel(t('Expiration Type'))
-      ->setDescription(t('A <em>Indefinite</em> embargo is never lifted.</br>A <em>Scheduled</em> embargo is lifted on the specified date.'))
+      ->setDescription(t('A <em>Indefinite</em> embargo is never lifted.<br/>A <em>Scheduled</em> embargo is lifted on the specified date.'))
       ->setInitialValue(EmbargoInterface::EXPIRATION_TYPE_INDEFINITE)
       ->setDefaultValue(EmbargoInterface::EXPIRATION_TYPE_INDEFINITE)
       ->setTranslatable(FALSE)
@@ -100,7 +100,7 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
       // Define this via an options provider once.
       // https://www.drupal.org/node/2329937 is completed.
       ->addPropertyConstraints('value', [
-        'AllowedValues' => ['callback' => static::class . '::getAllowedExpirationTypes'],
+        'AllowedValues' => ['callback' => [static::class, 'getAllowedExpirationTypes']],
       ])
       ->setDisplayOptions('form', [
         'type' => 'options_select',
@@ -415,7 +415,7 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
    */
   public function ipIsExempt(string $ip): bool {
     $exempt_ips = $this->getExemptIps();
-    return $exempt_ips ? $exempt_ips->withinRanges($ip) : FALSE;
+    return $exempt_ips && $exempt_ips->withinRanges($ip);
   }
 
 }
