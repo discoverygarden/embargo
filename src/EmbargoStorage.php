@@ -91,13 +91,13 @@ class EmbargoStorage extends SqlContentEntityStorage implements EmbargoStorageIn
       // If a media entity has any field that relates to a node we check that
       // node for applicable embargoes.
       $applicable = [];
+      /** @var \Drupal\Core\Field\EntityReferenceFieldItemListInterface $field */
       foreach ($entity->getFields() as $field) {
         if (
           !$field->isEmpty() &&
           $field instanceof EntityReferenceFieldItemListInterface &&
           $field->getFieldDefinition()->getSetting('target_type') === 'node'
         ) {
-          /** @var \Drupal\Core\Field\EntityReferenceFieldItemListInterface $field */
           foreach ($field->referencedEntities() as $node) {
             $applicable = array_merge($applicable, $this->getApplicableEmbargoes($node));
           }

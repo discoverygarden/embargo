@@ -130,7 +130,7 @@ class IpRange extends ContentEntityBase implements IpRangeInterface {
   public function getRanges(): array {
     $ranges = [];
     foreach ($this->get('ranges') as $range) {
-      $ranges[] = $range->value;
+      $ranges[] = $range->getValue();
     }
     return $ranges;
   }

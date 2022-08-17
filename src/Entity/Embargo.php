@@ -78,7 +78,9 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
       // Define this via an options provider once.
       // https://www.drupal.org/node/2329937 is completed.
       ->addPropertyConstraints('value', [
-        'AllowedValues' => ['callback' => [static::class, 'getAllowedEmbargoTypes']],
+        'AllowedValues' => [
+          'callback' => [static::class, 'getAllowedEmbargoTypes'],
+        ],
       ])
       ->setDisplayOptions('form', [
         'type' => 'options_select',
@@ -100,7 +102,9 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
       // Define this via an options provider once.
       // https://www.drupal.org/node/2329937 is completed.
       ->addPropertyConstraints('value', [
-        'AllowedValues' => ['callback' => [static::class, 'getAllowedExpirationTypes']],
+        'AllowedValues' => [
+          'callback' => [static::class, 'getAllowedExpirationTypes'],
+        ],
       ])
       ->setDisplayOptions('form', [
         'type' => 'options_select',

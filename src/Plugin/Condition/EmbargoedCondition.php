@@ -136,6 +136,7 @@ class EmbargoedCondition extends ConditionPluginBase implements ContainerFactory
    */
   public function evaluate() {
     $node = $this->routeMatch->getParameter('node');
+    $embargoed = FALSE;
     if ($node instanceof NodeInterface) {
       switch ($this->configuration['filter']) {
         case 'off':
@@ -162,9 +163,6 @@ class EmbargoedCondition extends ConditionPluginBase implements ContainerFactory
           break;
       }
 
-    }
-    else {
-      $embargoed = FALSE;
     }
 
     return $embargoed;

@@ -30,6 +30,7 @@ class IpRangeForm extends ContentEntityForm {
       $this->messenger()->addStatus($this->t('IP Range %label updated.', $t_args));
     }
     $form_state->setRedirectUrl($this->entity->toUrl('collection'));
+    return $result;
   }
 
 }

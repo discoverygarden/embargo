@@ -115,7 +115,7 @@ class QueryTagger {
     }
     $this->andifyQuery($query);
 
-    /** @var \Drupal\core\Entity\Sql\SqlEntityStorageInterface $storage */
+    /** @var \Drupal\Core\Entity\Sql\SqlEntityStorageInterface $storage */
     $storage = $this->entityTypeManager->getStorage($type);
     $tables = $storage->getTableMapping()->getTableNames();
 

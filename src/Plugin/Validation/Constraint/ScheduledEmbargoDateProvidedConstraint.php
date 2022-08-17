@@ -20,7 +20,7 @@ class ScheduledEmbargoDateProvidedConstraint extends CompositeConstraintBase {
    *
    * @var string
    */
-  public $dateRequired = 'The date is required when an embargo is scheduled.';
+  public string $dateRequired = 'The date is required when an embargo is scheduled.';
 
   /**
    * {@inheritdoc}

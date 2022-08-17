@@ -20,6 +20,7 @@ class ScheduledEmbargoDateProvidedConstraintValidator extends ConstraintValidato
 
     // If the resolution is other, require the order number.
     if ($scheduled && is_null($value->getExpirationDate())) {
+      /** @var \Drupal\embargo\Plugin\Validation\Constraint\ScheduledEmbargoDateProvidedConstraint $constraint */
       $this->context->buildViolation($constraint->dateRequired)
         ->atPath('expiration_date')
         ->addViolation();

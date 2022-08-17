@@ -139,14 +139,14 @@ class EmbargoController extends ControllerBase {
   /**
    * Gets this list's default operations.
    *
-   * @see \Drupal\Core\Entity\EntityListBuilder::getDefaultOperations()
-   *
    * @param \Drupal\embargo\EmbargoInterface $embargo
    *   The entity the operations are for.
    *
    * @return array
    *   The array structure is identical to the return value of
    *   self::getOperations().
+   *
+   * @see \Drupal\Core\Entity\EntityListBuilder::getDefaultOperations()
    */
   protected function getDefaultOperations(EmbargoInterface $embargo) {
     $operations = [];

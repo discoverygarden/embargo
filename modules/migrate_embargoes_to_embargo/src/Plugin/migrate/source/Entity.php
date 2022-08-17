@@ -2,7 +2,6 @@
 
 namespace Drupal\migrate_embargoes_to_embargo\Plugin\migrate\source;
 
-use Drupal\Core\TypedData\TypedDataInterface;
 use Drupal\migrate\Plugin\migrate\source\SourcePluginBase;
 use Drupal\migrate\Plugin\MigrationInterface;
 
@@ -24,7 +23,7 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
   /**
    * The entity type manager service.
    *
-   * @var \Drupal\Core\Entity\EntityTypeInterface
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
   protected EntityTypeManagerInterface $entityTypeManager;
 
@@ -73,7 +72,7 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
   /**
    * Helper; lookup the definition of the target type.
    *
-   * @return \Drupal\Core\Entity\EntityTypeManagerInterface
+   * @return \Drupal\Core\Entity\EntityTypeInterface
    *   The looked-up type.
    */
   protected function getType() : EntityTypeInterface {
@@ -93,22 +92,23 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
   /**
    * Helper; map properties to descriptions thereof.
    *
-   * @return \Drupal\Core\StringTranslation\TranslatableMarkup
+   * @return string
    *   A human-readable description of the given typed data property.
    */
-  protected function mapProp(TypedDataInterface $property) {
-    $def = $property->getDataDefinition();
-    return $this->t('@label: @description', [
+  protected function mapProp($def) {
+    return "{$this->t('@label: @description', [
       '@label' => $def->getLabel(),
       '@description' => $def->getDescription(),
-    ]);
+    ])}";
   }
 
   /**
    * {@inheritdoc}
    */
   public function fields() {
-    $properties = $this->getType()->getTypedData()->getProperties();
+    $class = $this->getType()->getClass();
+    /** @var \Drupal\Core\Field\BaseFieldDefinition[] $properties */
+    $properties = call_user_func([$class, 'baseFieldDefinitions'], $this->getType());
     $mapped = array_map([$this, 'mapProp'], $properties);
     return $mapped;
   }

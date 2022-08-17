@@ -115,6 +115,7 @@ class EmbargoForm extends ContentEntityForm {
       $this->messenger()->addStatus($this->t('Embargo updated for %node.', $t_args));
     }
     $form_state->setRedirectUrl($this->entity->toUrl('collection'));
+    return $result;
   }
 
 }
