@@ -12,6 +12,7 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\embargo\EmbargoInterface;
 use Drupal\embargo\IpRangeInterface;
 use Drupal\node\NodeInterface;
+use Drupal\user\UserInterface;
 
 /**
  * Defines the Embargo entity.
@@ -411,7 +412,9 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
   public function isUserExempt(AccountInterface $user): bool {
     $exempt_users = $this->getExemptUsers();
     $has_permission = $user->hasPermission('bypass embargo access');
-    return $has_permission || in_array($user, $exempt_users);
+    return $has_permission || in_array($user->id(), array_map(function (UserInterface $user) {
+      return $user->id();
+    }, $exempt_users));
   }
 
   /**
