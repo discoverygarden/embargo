@@ -6,12 +6,15 @@ use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Base implementation of embargoed access.
  */
 class EmbargoAccessCheck implements EmbargoAccessCheckInterface {
+
+  use StringTranslationTrait;
 
   /**
    * The entity type manager.
@@ -62,13 +65,15 @@ class EmbargoAccessCheck implements EmbargoAccessCheckInterface {
       $user,
       $this->request->getClientIp()
     );
-    $state = AccessResult::neutral();
-    if (!empty($embargoes)) {
-      $state = AccessResult::forbidden();
-      foreach ($embargoes as $embargo) {
-        $state->addCacheableDependency($embargo);
-      }
-    }
+    $state = AccessResult::forbiddenIf(
+      !empty($embargoes),
+      $this->formatPlural(
+        count($embargoes),
+        '1 embargo preventing access.',
+        '@count embargoes preventing access.'
+      )
+    );
+    array_map([$state, 'addCacheableDependency'], $embargoes);
     return $state;
   }
 
