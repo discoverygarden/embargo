@@ -1,0 +1,99 @@
+<?php
+
+/**
+ * @file
+ * Hook implementations.
+ */
+
+use Drupal\Core\Database\Query\AlterableInterface;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\embargo\EmbargoStorage;
+
+/**
+ * Implements hook_entity_type_alter().
+ */
+function embargo_entity_type_alter(array &$entity_types) {
+  $applicable_entity_types = EmbargoStorage::applicableEntityTypes();
+  foreach ($applicable_entity_types as $entity_type_id) {
+    $entity_type = &$entity_types[$entity_type_id];
+    $entity_type->setLinkTemplate('embargoes', "/embargo/$entity_type_id/{{$entity_type_id}}");
+  }
+}
+
+/**
+ * Implements hook_entity_access().
+ */
+function embargo_entity_access(EntityInterface $entity, $operation, AccountInterface $account) {
+  /** @var \Drupal\embargo\Access\EmbargoAccessCheckInterface $service */
+  $service = \Drupal::service('access_check.embargo');
+  return $service->access($entity, $account);
+}
+
+/**
+ * Implements hook_file_download().
+ */
+function embargo_file_download($uri) {
+  $files = \Drupal::entityTypeManager()
+    ->getStorage('file')
+    ->loadByProperties(['uri' => $uri]);
+  $file = reset($files);
+  if ($file instanceof EntityInterface) {
+    $access = \Drupal::service('access_check.embargo')->access($file, \Drupal::currentUser());
+    if ($access->isForbidden()) {
+      return -1;
+    }
+  }
+}
+
+/**
+ * Implements hook_query_TAG_alter().
+ */
+function embargo_query_node_access_alter(AlterableInterface $query) {
+  /** @var \Drupal\embargo\Access\QueryTagger $tagger */
+  $tagger = \Drupal::service('embargo.query_tagger');
+  $tagger->tagAccess($query, 'node');
+}
+
+/**
+ * Implements hook_query_TAG_alter().
+ */
+function embargo_query_media_access_alter(AlterableInterface $query) {
+  /** @var \Drupal\embargo\Access\QueryTagger $tagger */
+  $tagger = \Drupal::service('embargo.query_tagger');
+  $tagger->tagAccess($query, 'media');
+}
+
+/**
+ * Implements hook_query_TAG_alter().
+ */
+function embargo_query_file_access_alter(AlterableInterface $query) {
+  /** @var \Drupal\embargo\Access\QueryTagger $tagger */
+  $tagger = \Drupal::service('embargo.query_tagger');
+  $tagger->tagAccess($query, 'file');
+}
+
+/**
+ * Implements hook_theme().
+ */
+function embargo_theme($existing, $type, $theme, $path) {
+  return [
+    'embargo_ip_access_exemption' => [
+      'template' => 'embargo-ip-access-exemption',
+      'variables' => [
+        // A list of resource names.
+        'resources' => [],
+        // A list of embargo_ip_range entity identifers.
+        'ranges' => [],
+        'contact_email' => NULL,
+      ],
+    ],
+    'embargo_notification' => [
+      'template' => 'embargo-notification',
+      'variables' => [
+        'embargoes' => [],
+        'message' => NULL,
+      ],
+    ],
+  ];
+}

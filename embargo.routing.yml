@@ -1,0 +1,16 @@
+---
+embargo.settings:
+  path: '/admin/config/content/embargo'
+  defaults:
+    _form: '\Drupal\embargo\Form\EmbargoSettingsForm'
+    _title: 'Embargo Settings'
+  requirements:
+    _permission: 'administer embargo'
+
+embargo.ip_access_exemption:
+  path: '/embargo/ip-access-exemption'
+  defaults:
+    _controller: '\Drupal\embargo\Controller\IpRangeAccessExemptionController::response'
+    _title: 'Access Denied'
+  requirements:
+    _permission: 'access content'

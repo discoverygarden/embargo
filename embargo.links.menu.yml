@@ -1,0 +1,13 @@
+---
+embargo.settings:
+  title: 'Embargo'
+  description: 'Configure Embargo settings.'
+  route_name: embargo.settings
+  parent: system.admin_config_content
+
+embargo.admin:
+  title: Embargoes
+  route_name: entity.embargo.collection
+  parent: system.admin_content
+  weight: 10
+  description: 'List and edit embargoes.'

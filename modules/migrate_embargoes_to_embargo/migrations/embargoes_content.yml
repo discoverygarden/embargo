@@ -1,0 +1,36 @@
+---
+id: embargoes_content
+label: Transform "embargoes" content entities into "embargo" entities.
+source:
+  plugin: migrate_embargoes_to_embargo.source.entity
+  track_changes: true
+  entity_type: embargoes_content_entity
+  keys:
+    id:
+      type: integer
+  source_module: embargoes
+destination:
+  plugin: entity:embargo
+  validate: true
+  translations: false
+process:
+  label: label
+  expiration_type: expiration_type
+  expiration_date: expiration_date
+  exempt_ips:
+    - plugin: sub_process
+      source: exempt_ips
+      process:
+        target_id:
+          - plugin: migration_lookup
+            source: target_id
+            migration: embargoes_ip_ranges
+  exempt_users: exempt_users
+  additional_emails: additional_emails
+  embargoed_node: embargoed_node
+  embargo_type: embargo_type
+migration_dependencies:
+  required:
+    - embargoes_ip_ranges
+migration_tags:
+  - migrate_embargoes_to_embargo

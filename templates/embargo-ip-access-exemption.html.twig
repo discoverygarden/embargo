@@ -1,0 +1,39 @@
+<!-- IP access denied. -->
+<p>
+  {% trans %}
+    Your request for the following resource could not be resolved:
+    <strong>{{ resources | safe_join(', ') }}</strong>
+  {% plural resources|length %}
+    Your request for the following resources could not be resolved:
+    <strong>{{ resources | safe_join(', ') }}</strong>
+  {% endtrans %}
+</p>
+<p>{{ 'Access to this resource is restricted to the following networks:'|t }}</p>
+<ul>
+  {% for item in ranges %}
+    <li>
+      {% if item.proxy_url is empty %}
+        {{ item.label }}
+      {% else %}
+        <a href='{{ item.proxy_url }}'>{{ item.label }}</a>
+      {% endif %}
+    </li>
+  {% endfor %}
+</ul>
+
+<p>
+  {% trans %}
+    If any network listed above is rendered as a link, you may be able to reach
+    the resource by authenticating through a proxy.
+  {% endtrans %}
+</p>
+
+{% if contact_email is not empty %}
+<p>
+  {% trans %}
+    If you have any questions regarding access to this resource, contact
+    <a href="mailto:{{ contact_email }}">{{ contact_email }}</a> for more
+    information.
+  {% endtrans %}
+</p>
+{% endif %}
