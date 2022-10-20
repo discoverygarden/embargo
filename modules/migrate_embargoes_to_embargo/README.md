@@ -6,7 +6,7 @@ module to our "embargo" equivalents.
 Should be executable with something like:
 
 ```bash
-drush migrate:import --tags=migrate_embargoes_to_embargo
+drush migrate:import --tag=migrate_embargoes_to_embargo
 ```
 
 Or, more completely, a script such as:
