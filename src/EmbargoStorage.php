@@ -33,7 +33,7 @@ class EmbargoStorage extends SqlContentEntityStorage implements EmbargoStorageIn
   protected $request;
 
   /**
-   * Th current user.
+   * The current user.
    *
    * @var \Drupal\Core\Session\AccountInterface
    */
