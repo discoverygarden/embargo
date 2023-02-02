@@ -7,12 +7,16 @@ use Drupal\Core\Database\Query\SelectInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\embargo\EmbargoInterface;
+use Drupal\islandora_hierarchical_access\Access\QueryConjunctionTrait;
+use Drupal\islandora_hierarchical_access\LUTGeneratorInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Handles tagging entity queries with access restrictions for embargoes.
  */
 class QueryTagger {
+
+  use QueryConjunctionTrait;
 
   /**
    * The current user.
@@ -62,58 +66,22 @@ class QueryTagger {
   }
 
   /**
-   * Ensure the given query represents an "AND" to which we can attach filters.
-   *
-   * Queries can select either "OR" or "AND" as their base conjunction when they
-   * are created; however, constraining results is much easier with "AND"... so
-   * let's rework the query object to make it so.
-   *
-   * @param \Drupal\Core\Database\Query\SelectInterface $query
-   *   The query with which to deal.
-   *
-   * @return \Drupal\Core\Database\Query\SelectInterface
-   *   The query which has been dealt with... should be the same query, just
-   *   returning for (potential) convenience.
-   */
-  protected function andifyQuery(SelectInterface $query) {
-    $original_conditions =& $query->conditions();
-    if ($original_conditions['#conjunction'] === 'AND') {
-      // Nothing to do...
-      return $query;
-    }
-
-    $new_or = $query->orConditionGroup();
-
-    $original_conditions_copy = $original_conditions;
-    unset($original_conditions_copy['#conjunction']);
-    foreach ($original_conditions_copy as $orig_cond) {
-      $new_or->condition($orig_cond['field'], $orig_cond['value'] ?? NULL, $orig_cond['operator'] ?? '=');
-    }
-
-    $new_and = $query->andConditionGroup()
-      ->condition($new_or);
-
-    $original_conditions = $new_and->conditions();
-
-    return $query;
-  }
-
-  /**
    * Builds up the conditions used to restrict media or nodes.
    *
    * @param \Drupal\Core\Database\Query\SelectInterface $query
    *   The query being executed.
    * @param string $type
-   *   Either "node", "media" or "file".
+   *   Either "node" or "file".
    */
   public function tagAccess(SelectInterface $query, string $type) {
-    if (!in_array($type, ['node', 'media', 'file'])) {
+    if (!in_array($type, ['node', 'file'])) {
       throw new \InvalidArgumentException("Unrecognized type '$type'.");
     }
     elseif ($this->user->hasPermission('bypass embargo access')) {
       return;
     }
-    $this->andifyQuery($query);
+
+    static::conjunctionQuery($query);
 
     /** @var \Drupal\Core\Entity\Sql\SqlEntityStorageInterface $storage */
     $storage = $this->entityTypeManager->getStorage($type);
@@ -136,9 +104,6 @@ class QueryTagger {
         if ($type === 'node') {
           $to_apply->condition("{$alias}.{$key}", $this->buildInaccessibleEmbargoesCondition(), 'NOT IN');
         }
-        elseif ($type === 'media') {
-          $to_apply->condition("{$alias}.{$key}", $this->buildInaccessibleMediaCondition(), 'NOT IN');
-        }
         elseif ($type === 'file') {
           $to_apply->condition("{$alias}.{$key}", $this->buildInaccessibleFileCondition(), 'NOT IN');
         }
@@ -157,36 +122,46 @@ class QueryTagger {
    *   accessed.
    */
   protected function buildInaccessibleFileCondition() {
-    $file_query = $this->database->select('file_managed', 'f')->fields('f', ['fid']);
-    /** @var \Drupal\field\Entity\FieldStorageConfig[] $fields */
-    $fields = $this->entityTypeManager->getStorage('field_storage_config')->loadMultiple();
-    $file_fields_or = $file_query->orConditionGroup();
-    foreach ($fields as $field) {
-      $settings = $field->get('settings');
-      if ($field->get('entity_type') === 'media' && isset($settings['target_type']) && $settings['target_type'] === 'file') {
-        $field_name = $field->get('field_name');
-        $target_field = "{$field_name}_target_id";
-        $alias = $file_query->leftJoin("media__{$field_name}", $field_name, "f.fid = %alias.$target_field");
-        $file_fields_or->condition("{$alias}.entity_id", $this->buildInaccessibleMediaCondition(), 'IN');
-      }
-    }
-    $file_query->condition($file_fields_or);
-    return $file_query;
-
+    return $this->database->select(LUTGeneratorInterface::TABLE_NAME, 'lut')
+      ->fields('lut', ['fid'])
+      ->condition('lut.nid', $this->buildAccessibleEmbargoesQuery(EmbargoInterface::EMBARGO_TYPE_FILE), 'NOT IN');
   }
 
   /**
-   * Builds the condition for media that are inaccessible.
+   * Get query to select accessible embargoed entities.
+   *
+   * @param int $type
+   *   The type of embargo, expected to be one of:
+   *   - EmbargoInterface::EMBARGO_TYPE_NODE; or,
+   *   - EmbargoInterface::EMBARGO_TYPE_FILE.
    *
    * @return \Drupal\Core\Database\Query\SelectInterface
-   *   The sub-query to be used that results in all media IDs that cannot be
-   *   accessed.
+   *   A query returning things that should not be inaccessible.
    */
-  protected function buildInaccessibleMediaCondition() {
-    $media_query = $this->database->select('media', 'm');
-    $alias = $media_query->leftJoin('media__field_media_of', 'f', 'm.mid = %alias.entity_id');
-    return $media_query->condition("$alias.field_media_of_target_id", $this->buildInaccessibleEmbargoesCondition(), 'IN')
-      ->fields('m', ['mid']);
+  protected function buildAccessibleEmbargoesQuery($type) : SelectInterface {
+    $query = $this->database->select('embargo', 'e')
+      ->fields('e', ['embargoed_node']);
+
+    // Things are visible if...
+    $group = $query->orConditionGroup()
+      // The selected embargo entity does not apply to the given type; or...
+      ->condition('e.embargo_type', $type, '!=');
+
+    // ... the incoming IP is in an exempt range; or...
+    /** @var \Drupal\embargo\IpRangeStorageInterface $storage */
+    $storage = $this->entityTypeManager->getStorage('embargo_ip_range');
+    $applicable_ip_ranges = $storage->getApplicableIpRanges($this->currentIp);
+    if (!empty($applicable_ip_ranges)) {
+      $group->condition('e.exempt_ips', array_keys($applicable_ip_ranges), 'IN');
+    }
+
+    // ... the specific user is exempted from the embargo.
+    $user_alias = $query->leftJoin('embargo__exempt_users', 'u', 'e.id = %alias.entity_id');
+    $group->condition("$user_alias.exempt_users_target_id", $this->user->id());
+
+    $query->condition($group);
+
+    return $query;
   }
 
   /**
@@ -196,23 +171,9 @@ class QueryTagger {
    *   The sub-query to be used that results in embargoed_node IDs that
    *   cannot be accessed.
    */
-  protected function buildInaccessibleEmbargoesCondition() {
-    $accessible_embargoes = $this->database->select('embargo', 'e');
-    $group = $accessible_embargoes->orConditionGroup();
-
-    /** @var \Drupal\embargo\IpRangeStorageInterface $storage */
-    $storage = $this->entityTypeManager->getStorage('embargo_ip_range');
-    $applicable_ip_ranges = $storage->getApplicableIpRanges($this->currentIp);
-    if (!empty($applicable_ip_ranges)) {
-      $group->condition('e.exempt_ips', array_keys($applicable_ip_ranges), 'IN');
-    }
-    $group->condition('e.embargo_type', EmbargoInterface::EMBARGO_TYPE_FILE);
-    $alias = $accessible_embargoes->leftJoin('embargo__exempt_users', 'u', 'e.id = %alias.entity_id');
-    $group->condition("$alias.exempt_users_target_id", $this->user->id());
-    $accessible_embargoes->fields('e', ['embargoed_node'])->condition($group);
-
-    $inaccessible_nids = $this->database->select('embargo', 'ein');
-    return $inaccessible_nids->condition('ein.embargoed_node', $accessible_embargoes, 'NOT IN')
+  protected function buildInaccessibleEmbargoesCondition() : SelectInterface {
+    return $this->database->select('embargo', 'ein')
+      ->condition('ein.embargoed_node', $this->buildAccessibleEmbargoesQuery(EmbargoInterface::EMBARGO_TYPE_NODE), 'NOT IN')
       ->fields('ein', ['embargoed_node']);
   }
 

@@ -8,3 +8,4 @@ dependencies:
   - drupal:field
   - drupal:node
   - drupal:media
+  - islandora_hierarchical_access:islandora_hierarchical_access

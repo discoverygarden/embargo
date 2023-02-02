@@ -58,15 +58,6 @@ function embargo_query_node_access_alter(AlterableInterface $query) {
 /**
  * Implements hook_query_TAG_alter().
  */
-function embargo_query_media_access_alter(AlterableInterface $query) {
-  /** @var \Drupal\embargo\Access\QueryTagger $tagger */
-  $tagger = \Drupal::service('embargo.query_tagger');
-  $tagger->tagAccess($query, 'media');
-}
-
-/**
- * Implements hook_query_TAG_alter().
- */
 function embargo_query_file_access_alter(AlterableInterface $query) {
   /** @var \Drupal\embargo\Access\QueryTagger $tagger */
   $tagger = \Drupal::service('embargo.query_tagger');
