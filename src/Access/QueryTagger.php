@@ -2,8 +2,10 @@
 
 namespace Drupal\embargo\Access;
 
+use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Database\Query\SelectInterface;
+use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\embargo\EmbargoInterface;
@@ -47,22 +49,36 @@ class QueryTagger {
   protected $entityTypeManager;
 
   /**
-   * Service that gets used to tag entity queries.
+   * Time service.
    *
-   * @param \Drupal\Core\Session\AccountProxyInterface $user
-   *   The current user.
-   * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
-   *   The current request stack used to get the client's IP.
-   * @param \Drupal\Core\Database\Connection $database
-   *   The Drupal database service.
-   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
-   *   The entity type manager.
+   * @var \Drupal\Component\Datetime\TimeInterface
    */
-  public function __construct(AccountProxyInterface $user, RequestStack $request_stack, Connection $database, EntityTypeManagerInterface $entity_type_manager) {
+  protected TimeInterface $time;
+
+  /**
+   * Date formatter service.
+   *
+   * @var \Drupal\Core\Datetime\DateFormatterInterface
+   */
+  protected DateFormatterInterface $dateFormatter;
+
+  /**
+   * Constructor.
+   */
+  public function __construct(
+    AccountProxyInterface $user,
+    RequestStack $request_stack,
+    Connection $database,
+    EntityTypeManagerInterface $entity_type_manager,
+    TimeInterface $time,
+    DateFormatterInterface $date_formatter
+  ) {
     $this->user = $user;
     $this->currentIp = $request_stack->getCurrentRequest()->getClientIp();
     $this->database = $database;
     $this->entityTypeManager = $entity_type_manager;
+    $this->time = $time;
+    $this->dateFormatter = $date_formatter;
   }
 
   /**
@@ -74,7 +90,7 @@ class QueryTagger {
    *   Either "node" or "file".
    */
   public function tagAccess(SelectInterface $query, string $type) {
-    if (!in_array($type, ['node', 'file'])) {
+    if (!in_array($type, ['node', 'media', 'file'])) {
       throw new \InvalidArgumentException("Unrecognized type '$type'.");
     }
     elseif ($this->user->hasPermission('bypass embargo access')) {
@@ -104,8 +120,11 @@ class QueryTagger {
         if ($type === 'node') {
           $to_apply->condition("{$alias}.{$key}", $this->buildInaccessibleEmbargoesCondition(), 'NOT IN');
         }
+        elseif ($type === 'media') {
+          $to_apply->condition("{$alias}.{$key}", $this->buildInaccessibleFileCondition('mid'), 'NOT IN');
+        }
         elseif ($type === 'file') {
-          $to_apply->condition("{$alias}.{$key}", $this->buildInaccessibleFileCondition(), 'NOT IN');
+          $to_apply->condition("{$alias}.{$key}", $this->buildInaccessibleFileCondition('fid'), 'NOT IN');
         }
         else {
           throw new \InvalidArgumentException("Invalid type '$type'.");
@@ -115,15 +134,19 @@ class QueryTagger {
   }
 
   /**
-   * Builds the condition for files that are inaccessible.
+   * Builds the condition for file-typed embargoes that are inaccessible.
+   *
+   * @param string $lut_column
+   *   The particular column of the LUT to return, as file embargoes apply to
+   *   media ('mid') as well as files ('fid').
    *
    * @return \Drupal\Core\Database\Query\SelectInterface
    *   The sub-query to be used that results in all file IDs that cannot be
    *   accessed.
    */
-  protected function buildInaccessibleFileCondition() {
+  protected function buildInaccessibleFileCondition(string $lut_column) {
     return $this->database->select(LUTGeneratorInterface::TABLE_NAME, 'lut')
-      ->fields('lut', ['fid'])
+      ->fields('lut', [$lut_column])
       ->condition('lut.nid', $this->buildAccessibleEmbargoesQuery(EmbargoInterface::EMBARGO_TYPE_FILE), 'NOT IN');
   }
 
@@ -146,6 +169,13 @@ class QueryTagger {
     $group = $query->orConditionGroup()
       // The selected embargo entity does not apply to the given type; or...
       ->condition('e.embargo_type', $type, '!=');
+
+    $group->condition($query->andConditionGroup()
+      // ... a scheduled embargo...
+      ->condition('e.expiration_type', EmbargoInterface::EXPIRATION_TYPE_SCHEDULED)
+      // ... has a date in the past.
+      ->condition('e.expiration_date', $this->dateFormatter->format($this->time->getRequestTime(), 'custom', 'c'), '<')
+    );
 
     // ... the incoming IP is in an exempt range; or...
     /** @var \Drupal\embargo\IpRangeStorageInterface $storage */

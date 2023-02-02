@@ -291,7 +291,7 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
     try {
       /** @var \Drupal\datetime\Plugin\Field\FieldType\DateTimeFieldItemList $expiration_date */
       $expiration_date = $this->get('expiration_date');
-      return $expiration_date->first()->getValue()['date'];
+      return $expiration_date->first()->date;
     }
     catch (MissingDataException $e) {
       return NULL;

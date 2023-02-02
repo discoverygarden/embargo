@@ -87,7 +87,6 @@ class EmbargoStorage extends SqlContentEntityStorage implements EmbargoStorageIn
     }
     elseif ($entity instanceof MediaInterface || $entity instanceof FileInterface) {
       $query = $this->database->select('embargo', 'e')
-        // Or whatever ID field...
         ->fields('e', ['id'])
         ->distinct();
       $lut_alias = $query->join(LUTGeneratorInterface::TABLE_NAME, 'lut', '%alias.nid = e.embargoed_node');

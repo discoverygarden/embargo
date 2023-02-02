@@ -47,7 +47,7 @@ function embargo_file_download($uri) {
 }
 
 /**
- * Implements hook_query_TAG_alter().
+ * Implements hook_query_TAG_alter() for `node_access` tagged queries.
  */
 function embargo_query_node_access_alter(AlterableInterface $query) {
   /** @var \Drupal\embargo\Access\QueryTagger $tagger */
@@ -56,7 +56,16 @@ function embargo_query_node_access_alter(AlterableInterface $query) {
 }
 
 /**
- * Implements hook_query_TAG_alter().
+ * Implements hook_query_TAG_alter() for `media_access` tagged queries.
+ */
+function embargo_query_media_access_alter(AlterableInterface $query) {
+  /** @var \Drupal\embargo\Access\QueryTagger $tagger */
+  $tagger = \Drupal::service('embargo.query_tagger');
+  $tagger->tagAccess($query, 'media');
+}
+
+/**
+ * Implements hook_query_TAG_alter() for `file_access` tagged queries.
  */
 function embargo_query_file_access_alter(AlterableInterface $query) {
   /** @var \Drupal\embargo\Access\QueryTagger $tagger */
