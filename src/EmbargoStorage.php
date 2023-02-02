@@ -98,8 +98,8 @@ class EmbargoStorage extends SqlContentEntityStorage implements EmbargoStorageIn
     }
     elseif ($entity instanceof MediaInterface
       || $entity instanceof FileInterface) {
-      // If a media or file entity has any field that relates to a node we check that
-      // node for applicable embargoes.
+      // If a media or file entity has any field that relates
+      // to a node we check that node for applicable embargoes.
       $applicable = [];
       $conditionFieldName = $entity instanceof MediaInterface ? 'mid' : 'fid';
       $referencedNodeIds = $this->lutHelper->lookUpFields(
