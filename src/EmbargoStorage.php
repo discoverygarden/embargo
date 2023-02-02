@@ -55,17 +55,17 @@ class EmbargoStorage extends SqlContentEntityStorage implements EmbargoStorageIn
    */
   public static function createInstance(ContainerInterface $container, EntityTypeInterface $entity_type) {
     return new static(
-      $entity_type,
-      $container->get('database'),
-      $container->get('entity_field.manager'),
-      $container->get('cache.entity'),
-      $container->get('language_manager'),
-      $container->get('entity.memory_cache'),
-      $container->get('entity_type.bundle.info'),
-      $container->get('entity_type.manager'),
-      $container->get('request_stack'),
-      $container->get('current_user'),
-    );
+          $entity_type,
+          $container->get('database'),
+          $container->get('entity_field.manager'),
+          $container->get('cache.entity'),
+          $container->get('language_manager'),
+          $container->get('entity.memory_cache'),
+          $container->get('entity_type.bundle.info'),
+          $container->get('entity_type.manager'),
+          $container->get('request_stack'),
+          $container->get('current_user'),
+      );
   }
 
   /**
@@ -91,31 +91,21 @@ class EmbargoStorage extends SqlContentEntityStorage implements EmbargoStorageIn
       // If a media entity has any field that relates to a node we check that
       // node for applicable embargoes.
       $applicable = [];
-      /** @var \Drupal\Core\Field\EntityReferenceFieldItemListInterface $field */
-      foreach ($entity->getFields() as $field) {
-        if (
-          !$field->isEmpty() &&
-          $field instanceof EntityReferenceFieldItemListInterface &&
-          $field->getFieldDefinition()->getSetting('target_type') === 'node'
-        ) {
-          foreach ($field->referencedEntities() as $node) {
-            $applicable = array_merge($applicable, $this->getApplicableEmbargoes($node));
-          }
-        }
+      $isHelper = \Drupal::service('islandora_hierarchical_access.lut_helper');
+      $referencedNodeIds = $isHelper->lookUpFields('nid', ['field' => 'mid', 'value' => $entity->id()]);
+      $referencedNodes = $this->entityTypeManager->getStorage('node')->loadMultiple($referencedNodeIds);
+      foreach ($referencedNodes as $node) {
+        $applicable = array_merge($applicable, $this->getApplicableEmbargoes($node));
       }
+
       return array_unique($applicable, SORT_REGULAR);
     }
     elseif ($entity instanceof FileInterface) {
-      // If a file entity is referenced by either an media or node entity we
-      // recurse till we find all the applicable embargoes.
-      $relationships = NestedArray::mergeDeep(
-        file_get_file_references($entity),
-        file_get_file_references($entity, NULL, EntityStorageInterface::FIELD_LOAD_REVISION, 'image')
-      );
       $applicable = [];
-      $iterator = new \RecursiveIteratorIterator(new \RecursiveArrayIterator($relationships, \RecursiveArrayIterator::CHILD_ARRAYS_ONLY));
-      foreach ($iterator as $entity) {
-        $applicable = array_merge($applicable, $this->getApplicableEmbargoes($entity));
+      $isHelper = \Drupal::service('islandora_hierarchical_access.lut_helper');
+      $referencedNodes = $isHelper->lookUpFields('nid', ['field' => 'fid', 'value' => $entity->id()]);
+      foreach ($referencedNodes as $node) {
+        $applicable = array_merge($applicable, $this->getApplicableEmbargoes($node));
       }
       return array_unique($applicable, SORT_REGULAR);
     }
@@ -129,13 +119,15 @@ class EmbargoStorage extends SqlContentEntityStorage implements EmbargoStorageIn
     $timestamp = $timestamp ?? $this->request->server->get('REQUEST_TIME');
     $user = $user ?? $this->user;
     $ip = $ip ?? $this->request->getClientIp();
-    return array_filter($this->getApplicableEmbargoes($entity), function ($embargo) use ($entity, $timestamp, $user, $ip): bool {
-      $inactive = $embargo->expiresBefore($timestamp);
-      $type_exempt = ($entity instanceof NodeInterface && $embargo->getEmbargoType() !== EmbargoInterface::EMBARGO_TYPE_NODE);
-      $user_exempt = $embargo->isUserExempt($user);
-      $ip_exempt = $embargo->ipIsExempt($ip);
-      return !($inactive || $type_exempt || $user_exempt || $ip_exempt);
-    });
+    return array_filter(
+          $this->getApplicableEmbargoes($entity), function ($embargo) use ($entity, $timestamp, $user, $ip): bool {
+              $inactive = $embargo->expiresBefore($timestamp);
+              $type_exempt = ($entity instanceof NodeInterface && $embargo->getEmbargoType() !== EmbargoInterface::EMBARGO_TYPE_NODE);
+              $user_exempt = $embargo->isUserExempt($user);
+              $ip_exempt = $embargo->ipIsExempt($ip);
+              return !($inactive || $type_exempt || $user_exempt || $ip_exempt);
+          }
+      );
   }
 
 }

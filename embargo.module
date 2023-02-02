@@ -25,9 +25,13 @@ function embargo_entity_type_alter(array &$entity_types) {
  * Implements hook_entity_access().
  */
 function embargo_entity_access(EntityInterface $entity, $operation, AccountInterface $account) {
-  /** @var \Drupal\embargo\Access\EmbargoAccessCheckInterface $service */
-  $service = \Drupal::service('access_check.embargo');
-  return $service->access($entity, $account);
+  if ($entity instanceof \Drupal\node\NodeInterface
+    || $entity instanceof \Drupal\media\MediaInterface
+  || $entity instanceof \Drupal\file\FileInterface) {
+    /** @var \Drupal\embargo\Access\EmbargoAccessCheckInterface $service */
+    $service = \Drupal::service('access_check.embargo');
+    return $service->access($entity, $account);
+  }
 }
 
 /**
@@ -53,15 +57,6 @@ function embargo_query_node_access_alter(AlterableInterface $query) {
   /** @var \Drupal\embargo\Access\QueryTagger $tagger */
   $tagger = \Drupal::service('embargo.query_tagger');
   $tagger->tagAccess($query, 'node');
-}
-
-/**
- * Implements hook_query_TAG_alter().
- */
-function embargo_query_media_access_alter(AlterableInterface $query) {
-  /** @var \Drupal\embargo\Access\QueryTagger $tagger */
-  $tagger = \Drupal::service('embargo.query_tagger');
-  $tagger->tagAccess($query, 'media');
 }
 
 /**
