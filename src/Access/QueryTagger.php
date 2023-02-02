@@ -115,6 +115,9 @@ class QueryTagger extends HierarchicalQueryTagger {
   /**
    * Builds the condition for media that are inaccessible.
    *
+   * @param string $field
+   *   The field to get.
+   *
    * @return \Drupal\Core\Database\Query\SelectInterface
    *   The sub-query to be used that results in all media IDs that cannot be
    *   accessed.
