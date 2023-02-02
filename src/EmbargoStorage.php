@@ -96,12 +96,18 @@ class EmbargoStorage extends SqlContentEntityStorage implements EmbargoStorageIn
       $properties = ['embargoed_node' => $entity->id()];
       return $this->loadByProperties($properties);
     }
-    elseif ($entity instanceof MediaInterface || $entity instanceof FileInterface) {
+    elseif ($entity instanceof MediaInterface
+      || $entity instanceof FileInterface) {
       // If a media or file entity has any field that relates to a node we check that
       // node for applicable embargoes.
       $applicable = [];
       $conditionFieldName = $entity instanceof MediaInterface ? 'mid' : 'fid';
-      $referencedNodeIds = $this->lutHelper->lookUpFields('nid', ['field' => $conditionFieldName, 'value' => $entity->id()]);
+      $referencedNodeIds = $this->lutHelper->lookUpFields(
+        'nid',
+        [
+          'field' => $conditionFieldName,
+          'value' => $entity->id(),
+        ]);
       $referencedNodes = $this->entityTypeManager->getStorage('node')->loadMultiple($referencedNodeIds);
       foreach ($referencedNodes as $node) {
         $applicable = array_merge($applicable, $this->getApplicableEmbargoes($node));
