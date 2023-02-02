@@ -9,6 +9,7 @@ use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\TypedData\Exception\MissingDataException;
 use Drupal\embargo\EmbargoInterface;
 use Drupal\embargo\IpRangeInterface;
 use Drupal\node\NodeInterface;
@@ -287,7 +288,14 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
    * {@inheritdoc}
    */
   public function getExpirationDate(): ?DrupalDateTime {
-    return $this->get('expiration_date')->date;
+    try {
+      /** @var \Drupal\datetime\Plugin\Field\FieldType\DateTimeFieldItemList $expiration_date */
+      $expiration_date = $this->get('expiration_date');
+      return $expiration_date->first()->getValue()['date'];
+    }
+    catch (MissingDataException $e) {
+      return NULL;
+    }
   }
 
   /**

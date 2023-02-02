@@ -67,7 +67,7 @@ class EmbargoRouteSubscriber extends RouteSubscriberBase {
    * @param \Drupal\Core\Entity\EntityTypeInterface $entity_type
    *   The entity type.
    *
-   * @return \Symfony\Component\Routing\Route|null
+   * @return \Symfony\Component\Routing\Route|void
    *   The generated route, if available.
    */
   protected function getEmbargoesRoute(EntityTypeInterface $entity_type) {
