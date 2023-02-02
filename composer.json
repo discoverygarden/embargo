@@ -1,7 +1,7 @@
 {
-  "name": "discoverygarden/embargo",
-  "description": "A module for managing embargo policies with access restrictions on content",
-  "homepage": "https://github.com/discoverygarden/embargo",
-  "type": "drupal-module",
-  "license": "GPL-2.0-or-later"
+    "name": "discoverygarden/embargo",
+    "description": "A module for managing embargo policies with access restrictions on content",
+    "homepage": "https://github.com/discoverygarden/embargo",
+    "type": "drupal-module",
+    "license": "GPL-2.0-or-later"
 }
