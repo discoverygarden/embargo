@@ -100,11 +100,10 @@ class QueryTagger extends HierarchicalQueryTagger {
             $this->buildInaccessibleEmbargoesCondition(), 'NOT IN');
         }
         elseif ($type === 'media') {
-          $to_apply->condition("{$alias}.{$key}", $this->buildInaccessibleMediaCondition(), 'NOT IN');
+          $to_apply->condition("{$alias}.{$key}", $this->buildInaccessibleMediaCondition('mid'), 'NOT IN');
         }
         elseif ($type === 'file') {
-          $to_apply->condition("{$alias}.{$key}",
-            $this->buildInaccessibleFileCondition(), 'NOT IN');
+          $to_apply->condition("{$alias}.{$key}", $this->buildInaccessibleMediaCondition('fid'), 'NOT IN');
         }
         else {
           throw new \InvalidArgumentException("Invalid type '$type'.");
@@ -120,23 +119,8 @@ class QueryTagger extends HierarchicalQueryTagger {
    *   The sub-query to be used that results in all media IDs that cannot be
    *   accessed.
    */
-  protected function buildInaccessibleMediaCondition() {
-    $query = $this->database->select('media', 'm');
-    $lut_alias = $query->join(LUTGeneratorInterface::TABLE_NAME, 'lut',
-      '%alias.mid = m.mid');
-    $query->fields($lut_alias, ['mid']);
-    return $query->condition("lut.nid", $this->buildInaccessibleEmbargoesCondition(), 'IN');
-  }
-
-  /**
-   * Builds the condition for files that are inaccessible.
-   *
-   * @return \Drupal\Core\Database\Query\SelectInterface
-   *   The sub-query to be used that results in all file IDs that cannot be
-   *   accessed.
-   */
-  protected function buildInaccessibleFileCondition() {
-    $query = $this->getBaseMediaQuery();
+  protected function buildInaccessibleMediaCondition($field = 'fid') {
+    $query = $this->getBaseMediaQuery(FALSE, $field);
     return $query->condition("lut.nid", $this->buildInaccessibleEmbargoesCondition(), 'IN');
   }
 
