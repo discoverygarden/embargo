@@ -8,7 +8,6 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\embargo\EmbargoInterface;
-use Drupal\islandora_hierarchical_access\LUTGeneratorInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Drupal\islandora_hierarchical_access\Access\QueryTagger as HierarchicalQueryTagger;
 
