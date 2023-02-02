@@ -145,8 +145,10 @@ class QueryTagger {
    *   accessed.
    */
   protected function buildInaccessibleFileCondition(string $lut_column) {
-    return $this->database->select(LUTGeneratorInterface::TABLE_NAME, 'lut')
-      ->fields('lut', [$lut_column])
+    $query = $this->database->select('embargo', 'e');
+    $lut_alias = $query->join(LUTGeneratorInterface::TABLE_NAME, 'lut', '%alias.nid = e.embargoed_node');
+    return $query
+      ->fields($lut_alias, [$lut_column])
       ->condition('lut.nid', $this->buildAccessibleEmbargoesQuery(EmbargoInterface::EMBARGO_TYPE_FILE), 'NOT IN');
   }
 
@@ -187,7 +189,7 @@ class QueryTagger {
 
     // ... the specific user is exempted from the embargo.
     $user_alias = $query->leftJoin('embargo__exempt_users', 'u', 'e.id = %alias.entity_id');
-    $group->condition("$user_alias.exempt_users_target_id", $this->user->id());
+    $group->condition("{$user_alias}.exempt_users_target_id", $this->user->id());
 
     $query->condition($group);
 
