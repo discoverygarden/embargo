@@ -2,18 +2,15 @@
 
 namespace Drupal\embargo;
 
-use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Cache\CacheBackendInterface;
 use Drupal\Core\Cache\MemoryCache\MemoryCacheInterface;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Entity\EntityInterface;
-use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\Sql\SqlContentEntityStorage;
-use Drupal\Core\Field\EntityReferenceFieldItemListInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\file\FileInterface;
@@ -22,7 +19,6 @@ use Drupal\media\MediaInterface;
 use Drupal\node\NodeInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
-use function PHPUnit\Framework\assertInstanceOf;
 
 /**
  * Storage for embargo entities.
@@ -46,10 +42,9 @@ class EmbargoStorage extends SqlContentEntityStorage implements EmbargoStorageIn
   /**
    * The lookup table helper.
    *
-   * @var \Drupal\islandora_hierarchical_access\LUTHelper $lutHelper
+   * @var \Drupal\islandora_hierarchical_access\LUTHelper
    */
   protected $lutHelper;
-
 
   /**
    * Constructor.
@@ -93,6 +88,7 @@ class EmbargoStorage extends SqlContentEntityStorage implements EmbargoStorageIn
 
   /**
    * {@inheritdoc}
+   *
    * @throws \Exception
    */
   public function getApplicableEmbargoes(EntityInterface $entity): array {
@@ -126,12 +122,12 @@ class EmbargoStorage extends SqlContentEntityStorage implements EmbargoStorageIn
     $ip = $ip ?? $this->request->getClientIp();
     return array_filter(
       $this->getApplicableEmbargoes($entity), function ($embargo) use ($entity, $timestamp, $user, $ip): bool {
-      $inactive = $embargo->expiresBefore($timestamp);
-      $type_exempt = ($entity instanceof NodeInterface && $embargo->getEmbargoType() !== EmbargoInterface::EMBARGO_TYPE_NODE);
-      $user_exempt = $embargo->isUserExempt($user);
-      $ip_exempt = $embargo->ipIsExempt($ip);
-      return !($inactive || $type_exempt || $user_exempt || $ip_exempt);
-    }
+        $inactive = $embargo->expiresBefore($timestamp);
+        $type_exempt = ($entity instanceof NodeInterface && $embargo->getEmbargoType() !== EmbargoInterface::EMBARGO_TYPE_NODE);
+        $user_exempt = $embargo->isUserExempt($user);
+        $ip_exempt = $embargo->ipIsExempt($ip);
+        return !($inactive || $type_exempt || $user_exempt || $ip_exempt);
+      }
     );
   }
 
