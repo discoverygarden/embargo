@@ -2,21 +2,19 @@
 
 namespace Drupal\embargo;
 
-use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Cache\CacheBackendInterface;
 use Drupal\Core\Cache\MemoryCache\MemoryCacheInterface;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Entity\EntityInterface;
-use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\Sql\SqlContentEntityStorage;
-use Drupal\Core\Field\EntityReferenceFieldItemListInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\file\FileInterface;
+use Drupal\islandora_hierarchical_access\LUTGeneratorInterface;
 use Drupal\media\MediaInterface;
 use Drupal\node\NodeInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -35,7 +33,7 @@ class EmbargoStorage extends SqlContentEntityStorage implements EmbargoStorageIn
   protected $request;
 
   /**
-   * Th current user.
+   * The current user.
    *
    * @var \Drupal\Core\Session\AccountInterface
    */
@@ -87,37 +85,15 @@ class EmbargoStorage extends SqlContentEntityStorage implements EmbargoStorageIn
       $properties = ['embargoed_node' => $entity->id()];
       return $this->loadByProperties($properties);
     }
-    elseif ($entity instanceof MediaInterface) {
-      // If a media entity has any field that relates to a node we check that
-      // node for applicable embargoes.
-      $applicable = [];
-      /** @var \Drupal\Core\Field\EntityReferenceFieldItemListInterface $field */
-      foreach ($entity->getFields() as $field) {
-        if (
-          !$field->isEmpty() &&
-          $field instanceof EntityReferenceFieldItemListInterface &&
-          $field->getFieldDefinition()->getSetting('target_type') === 'node'
-        ) {
-          foreach ($field->referencedEntities() as $node) {
-            $applicable = array_merge($applicable, $this->getApplicableEmbargoes($node));
-          }
-        }
-      }
-      return array_unique($applicable, SORT_REGULAR);
-    }
-    elseif ($entity instanceof FileInterface) {
-      // If a file entity is referenced by either an media or node entity we
-      // recurse till we find all the applicable embargoes.
-      $relationships = NestedArray::mergeDeep(
-        file_get_file_references($entity),
-        file_get_file_references($entity, NULL, EntityStorageInterface::FIELD_LOAD_REVISION, 'image')
-      );
-      $applicable = [];
-      $iterator = new \RecursiveIteratorIterator(new \RecursiveArrayIterator($relationships, \RecursiveArrayIterator::CHILD_ARRAYS_ONLY));
-      foreach ($iterator as $entity) {
-        $applicable = array_merge($applicable, $this->getApplicableEmbargoes($entity));
-      }
-      return array_unique($applicable, SORT_REGULAR);
+    elseif ($entity instanceof MediaInterface || $entity instanceof FileInterface) {
+      $query = $this->database->select('embargo', 'e')
+        ->fields('e', ['id'])
+        ->distinct();
+      $lut_alias = $query->join(LUTGeneratorInterface::TABLE_NAME, 'lut', '%alias.nid = e.embargoed_node');
+      $key = $entity instanceof MediaInterface ? 'mid' : 'fid';
+      $query->condition("{$lut_alias}.{$key}", $entity->id());
+      $ids = $query->execute()->fetchCol();
+      return $this->loadMultiple($ids);
     }
     return [];
   }

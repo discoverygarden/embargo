@@ -16,6 +16,8 @@ services:
       - '@request_stack'
       - '@database'
       - '@entity_type.manager'
+      - '@datetime.time'
+      - '@date.formatter'
   embargo.route_subscriber:
     class: Drupal\embargo\Routing\EmbargoRouteSubscriber
     arguments: ['@entity_type.manager']
