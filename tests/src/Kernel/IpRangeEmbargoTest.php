@@ -42,49 +42,49 @@ class IpRangeEmbargoTest extends EmbargoKernelTestBase {
   protected NodeInterface $nonEmbargoedNode;
 
   /**
-   * Non embargoed node.
+   * Embargoed node with no IP range.
    *
    * @var \Drupal\node\NodeInterface
    */
   protected NodeInterface $embargoedNodeWithoutIpRange;
 
   /**
-   * Non embargoed node.
+   * Embargoed node with current user IP exempt.
    *
    * @var \Drupal\node\NodeInterface
    */
   protected NodeInterface $embargoedNodeWithCurrentIpRange;
 
   /**
-   * Non embargoed node.
+   * Embargoed node with IP different that current user IP exempt.
    *
    * @var \Drupal\node\NodeInterface
    */
   protected NodeInterface $embargoedNodeWithDifferentIpRange;
 
   /**
-   * Non embargoed node.
+   * Embargo without IP range
    *
    * @var \Drupal\embargo\EmbargoInterface
    */
   protected EmbargoInterface $embargoWithoutIpRange;
 
   /**
-   * Non embargoed node.
+   * Embargo with current IP range exempt.
    *
    * @var \Drupal\embargo\EmbargoInterface
    */
   protected EmbargoInterface $embargoWithCurrentIpRange;
 
   /**
-   * Non embargoed node.
+   * Embargo with different than current IP range exempt.
    *
    * @var \Drupal\embargo\EmbargoInterface
    */
   protected EmbargoInterface $embargoWithDifferentIpRange;
 
   /**
-   * Non embargoed node.
+   * Ip range entity
    *
    * @var \Drupal\embargo\IpRangeInterface
    */
