@@ -85,7 +85,7 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoFunctionalTestBase {
    * Verifies that a user cannot view the files of an embargoed node.
    */
   public function testNodeEmbargoReferencedFileAccessQueryAlterAccessDenied() {
-    $query = Database::getConnection()->select('files', 'f')
+    $query = Database::getConnection()->select('file_managed', 'f')
       ->fields('f');
     $query->addTag('file_access');
     $query->addMetaData('op', 'view');
@@ -142,7 +142,7 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoFunctionalTestBase {
    */
   public function testDeletedNodeEmbargoFileAccessQueryAlterAccessAllowed() {
     $this->embargo->delete();
-    $query = Database::getConnection()->select('files', 'f')
+    $query = Database::getConnection()->select('file_managed', 'f')
       ->fields('f');
     $query->addTag('file_access');
     $query->addMetaData('op', 'view');
