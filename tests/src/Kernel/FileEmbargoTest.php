@@ -40,6 +40,13 @@ class FileEmbargoTest extends EmbargoKernelTestBase {
   }
 
   /**
+   * Test node embargo creation.
+   */
+  public function testCreateFileEmbargo() {
+    $this->assertInstanceOf('\Drupal\embargo\EmbargoInterface', $this->createFileEmbargo());
+  }
+
+  /**
    * Test operations for node of an embargoed file.
    *
    * @dataProvider providerNodeOperations

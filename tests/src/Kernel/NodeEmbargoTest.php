@@ -40,6 +40,13 @@ class NodeEmbargoTest extends EmbargoKernelTestBase {
   }
 
   /**
+   * Test node embargo creation.
+   */
+  public function testCreateNodeEmbargo() {
+   $this->assertInstanceOf('\Drupal\embargo\EmbargoInterface', $this->createNodeEmbargo());
+  }
+
+  /**
    * Test view operation on a non-embargoed node.
    *
    * @dataProvider providerNodeOperations
