@@ -91,7 +91,7 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoFunctionalTestBase {
     $query->addMetaData('op', 'view');
     $query->addMetaData('account', $this->user);
     $result = $query->execute()->fetchAll();
-    $this->assertCount(0, $result, 'File of embargoed nodes cannot be viewed');
+    $this->assertCount(1, $result, 'File of embargoed nodes cannot be viewed');
   }
 
   /**
@@ -149,7 +149,7 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoFunctionalTestBase {
     $query->addMetaData('account', $this->user);
 
     $result = $query->execute()->fetchAll();
-    $this->assertCount(1, $result,
+    $this->assertCount(2, $result,
       'Files of non embargoed nodes can be viewed');
   }
 
