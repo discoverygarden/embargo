@@ -71,7 +71,7 @@ class EmbargoAccessCheck implements EmbargoAccessCheckInterface {
         count($embargoes),
         '1 embargo preventing access.',
         '@count embargoes preventing access.'
-      )
+      )->render()
     );
     array_map([$state, 'addCacheableDependency'], $embargoes);
     return $state;
