@@ -33,30 +33,30 @@ abstract class EmbargoKernelTestBase extends AbstractKernelTestBase {
     $this->media = $this->createMedia($this->file, $this->node);
     $this->user = $this->setUpCurrentUser([], ['access content'], FALSE);
     $this->op = 'view';
-    $this->ipRange = $this->createIpRangeEntity();
   }
 
   /**
    * Creates an iprange entity.
    */
-  protected function createIpRangeEntity() {
+  protected function createIpRangeEntity($ipRange) {
     /** @var \Drupal\embargo\Entity\IpRange $entity */
     return $this->createEntity('embargo_ip_range', [
       'label' => 'Ip Range Embargo',
-      'ranges' => '192.168.0.0./29',
+      'ranges' => $ipRange,
     ]);
   }
 
   /**
    * Creates a file embargo.
    */
-  protected function createEmbargo($type, $expiration_type = EmbargoInterface::EXPIRATION_TYPE_INDEFINITE, $ipRange = NULL) {
+  protected function createEmbargo($type, $nid = NULL, $ipRange = NULL, $expiration_type = EmbargoInterface::EXPIRATION_TYPE_INDEFINITE) {
     // Add embargo.
     /** @var \Drupal\embargo\EmbargoInterface $entity */
     return $this->createEntity('embargo', [
       'embargo_type' => $type,
-      'embargoed_node' => $this->node->id(),
+      'embargoed_node' => $nid ?? $this->node->id(),
       'expiration_type' => $expiration_type,
+      'exempt_ips' => $ipRange ? $ipRange->id() : NULL,
     ]);
   }
 

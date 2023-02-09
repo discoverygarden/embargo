@@ -30,7 +30,7 @@ class NodeEmbargoTest extends EmbargoKernelTestBase {
    * Test node embargo creation.
    */
   public function testCreateNodeEmbargo() {
-   $this->assertInstanceOf('\Drupal\embargo\EmbargoInterface', $this->createEmbargo(EmbargoInterface::EMBARGO_TYPE_NODE));
+    $this->assertInstanceOf('\Drupal\embargo\EmbargoInterface', $this->createEmbargo(EmbargoInterface::EMBARGO_TYPE_NODE));
   }
 
   /**
@@ -62,6 +62,8 @@ class NodeEmbargoTest extends EmbargoKernelTestBase {
    * Test operations for a node after deleting embargo.
    *
    * @dataProvider providerNodeOperations
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function testDeletedEmbargoNodeAccessAllowed($operation) {
     $this->embargo->delete();
