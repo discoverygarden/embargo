@@ -23,27 +23,14 @@ class NodeEmbargoTest extends EmbargoKernelTestBase {
    */
   public function setUp(): void {
     parent::setUp();
-    $this->embargo = $this->createNodeEmbargo();
-  }
-
-  /**
-   * Create a node embargo.
-   */
-  private function createNodeEmbargo() {
-    // Add embargo.
-    /** @var \Drupal\embargo\EmbargoInterface $entity */
-    return $this->createEntity('embargo', [
-      'embargo_type' => EmbargoInterface::EMBARGO_TYPE_NODE,
-      'embargoed_node' => $this->node->id(),
-      'expiration_type' => EmbargoInterface::EXPIRATION_TYPE_INDEFINITE,
-    ]);
+    $this->embargo = $this->createEmbargo(EmbargoInterface::EMBARGO_TYPE_NODE);
   }
 
   /**
    * Test node embargo creation.
    */
   public function testCreateNodeEmbargo() {
-   $this->assertInstanceOf('\Drupal\embargo\EmbargoInterface', $this->createNodeEmbargo());
+   $this->assertInstanceOf('\Drupal\embargo\EmbargoInterface', $this->createEmbargo(EmbargoInterface::EMBARGO_TYPE_NODE));
   }
 
   /**

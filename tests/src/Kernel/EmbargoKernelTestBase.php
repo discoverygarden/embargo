@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\embargo\Kernel;
 
+use Drupal\embargo\EmbargoInterface;
 use Drupal\Tests\islandora_hierarchical_access\Kernel\AbstractKernelTestBase;
 use Drupal\Tests\test_support\Traits\Installs\InstallsModules;
 use Drupal\Tests\user\Traits\UserCreationTrait;
@@ -43,6 +44,19 @@ abstract class EmbargoKernelTestBase extends AbstractKernelTestBase {
     return $this->createEntity('embargo_ip_range', [
       'label' => 'Ip Range Embargo',
       'ranges' => '192.168.0.0./29',
+    ]);
+  }
+
+  /**
+   * Creates a file embargo.
+   */
+  protected function createEmbargo($type, $expiration_type = EmbargoInterface::EXPIRATION_TYPE_INDEFINITE, $ipRange = NULL) {
+    // Add embargo.
+    /** @var \Drupal\embargo\EmbargoInterface $entity */
+    return $this->createEntity('embargo', [
+      'embargo_type' => $type,
+      'embargoed_node' => $this->node->id(),
+      'expiration_type' => $expiration_type,
     ]);
   }
 

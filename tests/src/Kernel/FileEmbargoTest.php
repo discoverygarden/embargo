@@ -23,27 +23,14 @@ class FileEmbargoTest extends EmbargoKernelTestBase {
    */
   public function setUp(): void {
     parent::setUp();
-    $this->embargo = $this->createFileEmbargo();
-  }
-
-  /**
-   * Creates a file embargo.
-   */
-  private function createFileEmbargo() {
-    // Add embargo.
-    /** @var \Drupal\embargo\EmbargoInterface $entity */
-    return $this->createEntity('embargo', [
-      'embargo_type' => EmbargoInterface::EMBARGO_TYPE_FILE,
-      'embargoed_node' => $this->node->id(),
-      'expiration_type' => EmbargoInterface::EXPIRATION_TYPE_INDEFINITE,
-    ]);
+    $this->embargo = $this->createEmbargo(EmbargoInterface::EMBARGO_TYPE_FILE);
   }
 
   /**
    * Test node embargo creation.
    */
   public function testCreateFileEmbargo() {
-    $this->assertInstanceOf('\Drupal\embargo\EmbargoInterface', $this->createFileEmbargo());
+    $this->assertInstanceOf('\Drupal\embargo\EmbargoInterface', $this->createEmbargo(EmbargoInterface::EMBARGO_TYPE_FILE));
   }
 
   /**
