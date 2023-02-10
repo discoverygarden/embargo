@@ -12,29 +12,18 @@ use Drupal\embargo\EmbargoInterface;
 class NodeEmbargoTest extends EmbargoKernelTestBase {
 
   /**
-   * Embargo for test.
-   *
-   * @var \Drupal\embargo\EmbargoInterface
-   */
-  protected EmbargoInterface $embargo;
-
-  /**
-   * {@inheritDoc}
-   */
-  public function setUp(): void {
-    parent::setUp();
-    $this->embargo = $this->createEmbargo(EmbargoInterface::EMBARGO_TYPE_NODE);
-  }
-
-  /**
    * Test node embargo creation.
    */
   public function testCreateNodeEmbargo() {
-    $this->assertInstanceOf('\Drupal\embargo\EmbargoInterface', $this->createEmbargo(EmbargoInterface::EMBARGO_TYPE_NODE));
+    $node = $this->createNode();
+    $this->assertInstanceOf('\Drupal\embargo\EmbargoInterface', $this->createEmbargo($node, EmbargoInterface::EMBARGO_TYPE_NODE));
   }
 
   /**
    * Test view operation on a non-embargoed node.
+   *
+   * View operation on a non-embargoed node should be
+   * allowed and edit/delete else should be denied.
    *
    * @dataProvider providerNodeOperations
    */
@@ -52,51 +41,79 @@ class NodeEmbargoTest extends EmbargoKernelTestBase {
   /**
    * Test operations for embargoed node.
    *
+   * All operations on an embargoed node should be denied.
+   *
    * @dataProvider providerNodeOperations
    */
   public function testEmbargoedNodeAccessDenied($operation) {
-    $this->assertFalse($this->node->access($operation, $this->user));
+    $embargoednode = $this->createNode();
+    $this->createEmbargo($embargoednode, EmbargoInterface::EMBARGO_TYPE_NODE);
+    $this->assertFalse($embargoednode->access($operation, $this->user));
   }
 
   /**
-   * Test operations for a node after deleting embargo.
+   * Test operations for a node after creating and then deleting embargo.
+   *
+   * All operations should be denied on an embargoed node.
+   * After deleting the embargo view should be allowed.
    *
    * @dataProvider providerNodeOperations
    *
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function testDeletedEmbargoNodeAccessAllowed($operation) {
-    $this->embargo->delete();
+    $embargoednode = $this->createNode();
+    $embargo = $this->createEmbargo($embargoednode, EmbargoInterface::EMBARGO_TYPE_NODE);
+    $this->assertFalse($embargoednode->access($operation, $this->user));
+
+    // Delete the embargo.
+    $embargo->delete();
+
     if ($operation == 'view') {
-      $this->assertTrue($this->node->access($operation, $this->user));
+      $this->assertTrue($embargoednode->access($operation, $this->user));
     }
     else {
-      $this->assertFalse($this->node->access($operation, $this->user));
-      $this->assertFalse($this->node->access($operation, $this->user));
+      $this->assertFalse($embargoednode->access($operation, $this->user));
+      $this->assertFalse($embargoednode->access($operation, $this->user));
     }
   }
 
   /**
    * Test operations for related media and file on an embargoed node.
    *
+   * On an embargoed node all operations on
+   * referenced media and files should be denied.
+   *
    * @dataProvider providerMediaFileOperations
    */
   public function testEmbargoedNodeRelatedMediaFileAccessDenied($operation) {
-    $this->assertFalse($this->media->access($operation, $this->user));
-    $this->assertFalse($this->file->access($operation, $this->user));
+    $embargoednode = $this->createNode();
+    $embargoedFile = $this->createFile();
+    $embargoedMedia = $this->createMedia($embargoedFile, $embargoednode);
+    $this->createEmbargo($embargoednode, EmbargoInterface::EMBARGO_TYPE_NODE);
+
+    $this->assertFalse($embargoedMedia->access($operation, $this->user));
+    $this->assertFalse($embargoedFile->access($operation, $this->user));
   }
 
   /**
    * Test operations for related media and file after deleting embargo.
    *
+   * After deleting an embargo related file and media should be accessible.
+   *
    * @dataProvider providerMediaFileOperations
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
    */
-  public function testDeletedEmbargoedNodeRelatedMediaFileAccessAllowed(
-    $operation
-  ) {
-    $this->embargo->delete();
-    $this->assertTrue($this->media->access($operation, $this->user));
-    $this->assertTrue($this->file->access($operation, $this->user));
+  public function testDeletedEmbargoedNodeRelatedMediaFileAccessAllowed($operation) {
+    $embargoednode = $this->createNode();
+    $embargoedFile = $this->createFile();
+    $embargoedMedia = $this->createMedia($embargoedFile, $embargoednode);
+    $embargo = $this->createEmbargo($embargoednode, EmbargoInterface::EMBARGO_TYPE_NODE);
+    $embargo->delete();
+
+    $this->assertTrue($embargoedMedia->access($operation, $this->user));
+    $this->assertTrue($embargoedFile->access($operation, $this->user));
   }
 
 }

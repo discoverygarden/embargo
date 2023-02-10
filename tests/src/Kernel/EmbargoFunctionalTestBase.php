@@ -1,6 +1,6 @@
 <?php
 
-namespace Drupal\Tests\embargo\Functional;
+namespace Drupal\Tests\embargo\Kernel;
 
 use Drupal\embargo\EmbargoInterface;
 use Drupal\Tests\BrowserTestBase;

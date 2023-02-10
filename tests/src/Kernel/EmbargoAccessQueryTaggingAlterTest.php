@@ -1,42 +1,36 @@
 <?php
 
-namespace Drupal\Tests\embargo\Functional;
+namespace Drupal\Tests\embargo\Kernel;
 
 use Drupal\Core\Database\Database;
-use Drupal\embargo\EmbargoInterface;
 
 /**
  * Tests access queries are properly altered by embargo module.
  *
  * @group embargo
  */
-class EmbargoAccessQueryTaggingAlterTest extends EmbargoFunctionalTestBase {
-
-  /**
-   * {@inheritdoc}
-   */
-  protected $defaultTheme = 'stark';
+class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
 
   /**
    * {@inheritdoc}
    */
   public function setUp(): void {
     parent::setUp();
-    node_access_rebuild();
-    $this->embargo = $this->createEmbargo(EmbargoInterface::EMBARGO_TYPE_NODE);
+
+    // Create two nodes one embargoed and one non-embargoed.
+    $embargoedNode = $this->createNode();
+    $this->createMedia($this->createFile(), $embargoedNode);
+    $this->embargo = $this->createEmbargo($embargoedNode);
+
+    $this->createNode();
   }
 
   /**
-   * Tests 'node_access' query alter, for node without embargo.
+   * Tests 'node_access' query alter, for nodes with embargo.
    *
-   * Verifies that a user with access
-   * content permission can view a non-embargoed node.
+   * Verifies that a user can view non-embargoed nodes only.
    */
-  public function testEmbargoNodeQueryAlterWithAccess() {
-    $this->node = $this->drupalCreateNode([
-      'type' => 'page',
-      'title' => 'Article 2',
-    ]);
+  public function testEmbargoNodeQueryAlterAccess() {
     $query = Database::getConnection()->select('node', 'n')
       ->fields('n');
     $query->addTag('node_access');
@@ -44,23 +38,7 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoFunctionalTestBase {
     $query->addMetaData('account', $this->user);
 
     $result = $query->execute()->fetchAll();
-    $this->assertCount(1, $result, 'Node without embargo can be viewed.');
-  }
-
-  /**
-   * Tests 'node_access' query alter, for embargoed node.
-   *
-   * Verifies that a user cannot view an embargoed node.
-   */
-  public function testNodeEmbargoNodeAccessQueryAlterAccessDenied() {
-    $query = Database::getConnection()->select('node', 'n')
-      ->fields('n');
-    $query->addTag('node_access');
-    $query->addMetaData('op', 'view');
-    $query->addMetaData('account', $this->user);
-
-    $result = $query->execute()->fetchAll();
-    $this->assertCount(0, $result, 'Embargoed nodes cannot be viewed');
+    $this->assertCount(1, $result, 'User can only view non-embargoed node.');
   }
 
   /**
@@ -110,7 +88,7 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoFunctionalTestBase {
     $query->addMetaData('account', $this->user);
 
     $result = $query->execute()->fetchAll();
-    $this->assertCount(1, $result, 'Non embargoed nodes can be viewed');
+    $this->assertCount(2, $result, 'Non embargoed nodes can be viewed');
   }
 
   /**

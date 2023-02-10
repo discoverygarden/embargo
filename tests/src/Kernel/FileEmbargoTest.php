@@ -12,62 +12,72 @@ use Drupal\embargo\EmbargoInterface;
 class FileEmbargoTest extends EmbargoKernelTestBase {
 
   /**
-   * Embargo for test.
-   *
-   * @var \Drupal\embargo\EmbargoInterface
-   */
-  protected EmbargoInterface $embargo;
-
-  /**
-   * {@inheritDoc}
-   */
-  public function setUp(): void {
-    parent::setUp();
-    $this->embargo = $this->createEmbargo(EmbargoInterface::EMBARGO_TYPE_FILE);
-  }
-
-  /**
    * Test node embargo creation.
    */
   public function testCreateFileEmbargo() {
-    $this->assertInstanceOf('\Drupal\embargo\EmbargoInterface', $this->createEmbargo(EmbargoInterface::EMBARGO_TYPE_FILE));
+    $node = $this->createNode();
+    $this->createMedia($this->createFile(), $node);
+    $this->assertInstanceOf('\Drupal\embargo\EmbargoInterface', $this->createEmbargo($node, EmbargoInterface::EMBARGO_TYPE_FILE));
   }
 
   /**
    * Test operations for node of an embargoed file.
    *
+   * View operation should be allowed on the node.
+   *
    * @dataProvider providerNodeOperations
    */
   public function testFileEmbargoedNodeAccessAllowed($operation) {
+    $node = $this->createNode();
+    $this->createMedia($this->createFile(), $node);
+    $this->createEmbargo($node, EmbargoInterface::EMBARGO_TYPE_FILE);
+
     if ($operation == 'view') {
-      $this->assertTrue($this->node->access($operation, $this->user));
+      $this->assertTrue($node->access($operation, $this->user));
     }
     else {
-      $this->assertFalse($this->node->access($operation, $this->user));
+      $this->assertFalse($node->access($operation, $this->user));
     }
   }
 
   /**
    * Test operations for file and related media on an embargoed file.
    *
+   * All operations should be denied on embargoed file and media.
+   *
    * @dataProvider providerMediaFileOperations
    */
   public function testEmbargoedNodeRelatedMediaFileAccessDenied($operation) {
-    $this->assertFalse($this->media->access($operation, $this->user));
-    $this->assertFalse($this->file->access($operation, $this->user));
+    $node = $this->createNode();
+    $file = $this->createFile();
+    $media = $this->createMedia($file, $node);
+    $this->createEmbargo($node, EmbargoInterface::EMBARGO_TYPE_FILE);
+
+    $this->assertFalse($media->access($operation, $this->user));
+    $this->assertFalse($file->access($operation, $this->user));
   }
 
   /**
    * Test operations for related media and file after deleting embargo.
    *
+   * After deleting a file embargo all operations should be allowed.
+   *
    * @dataProvider providerMediaFileOperations
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function testDeletedEmbargoedFileRelatedMediaFileAccessAllowed(
     $operation
   ) {
-    $this->embargo->delete();
-    $this->assertTrue($this->media->access($operation, $this->user));
-    $this->assertTrue($this->file->access($operation, $this->user));
+    $node = $this->createNode();
+    $file = $this->createFile();
+    $media = $this->createMedia($file, $node);
+    $fileEmbargo = $this->createEmbargo($node, EmbargoInterface::EMBARGO_TYPE_FILE);
+
+    $fileEmbargo->delete();
+
+    $this->assertTrue($media->access($operation, $this->user));
+    $this->assertTrue($file->access($operation, $this->user));
   }
 
 }

@@ -63,7 +63,7 @@ class IpRangeEmbargoTest extends EmbargoKernelTestBase {
   protected NodeInterface $embargoedNodeWithDifferentIpRange;
 
   /**
-   * Embargo without IP range
+   * Embargo without IP range.
    *
    * @var \Drupal\embargo\EmbargoInterface
    */
@@ -84,7 +84,7 @@ class IpRangeEmbargoTest extends EmbargoKernelTestBase {
   protected EmbargoInterface $embargoWithDifferentIpRange;
 
   /**
-   * Ip range entity
+   * Ip range entity.
    *
    * @var \Drupal\embargo\IpRangeInterface
    */
@@ -102,9 +102,9 @@ class IpRangeEmbargoTest extends EmbargoKernelTestBase {
     $this->embargoedNodeWithCurrentIpRange = $this->createNode();
     $this->embargoedNodeWithDifferentIpRange = $this->createNode();
     $this->currentIpRangeEntity = $this->createIpRangeEntity($this->ipRange);
-    $this->embargoWithoutIpRange = $this->createEmbargo(EmbargoInterface::EMBARGO_TYPE_NODE, $this->embargoedNodeWithoutIpRange->id(), EmbargoInterface::EXPIRATION_TYPE_INDEFINITE);
-    $this->embargoWithCurrentIpRange = $this->createEmbargo(EmbargoInterface::EMBARGO_TYPE_NODE, $this->embargoedNodeWithCurrentIpRange->id(), $this->currentIpRangeEntity);
-    $this->embargoWithDifferentIpRange = $this->createEmbargo(EmbargoInterface::EMBARGO_TYPE_NODE, $this->embargoedNodeWithDifferentIpRange->id(), $this->createIpRangeEntity('0.0.0.0.1/29'));
+    $this->embargoWithoutIpRange = $this->createEmbargo($this->embargoedNodeWithoutIpRange);
+    $this->embargoWithCurrentIpRange = $this->createEmbargo($this->embargoedNodeWithCurrentIpRange, 1, $this->currentIpRangeEntity);
+    $this->embargoWithDifferentIpRange = $this->createEmbargo($this->embargoedNodeWithDifferentIpRange, 1, $this->createIpRangeEntity('0.0.0.0.1/29'));
   }
 
   /**
