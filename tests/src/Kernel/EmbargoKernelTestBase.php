@@ -57,7 +57,7 @@ abstract class EmbargoKernelTestBase extends AbstractIslandoraKernelTestBase {
   /**
    * Data provider for testGetTitleIsolated().
    */
-  public function providerMediaFileOperations(): array {
+  protected function providerMediaFileOperations(): array {
     return [
       'View' => ['view'],
       'Download' => ['download'],
@@ -67,7 +67,7 @@ abstract class EmbargoKernelTestBase extends AbstractIslandoraKernelTestBase {
   /**
    * Data provider for node operations.
    */
-  public function providerNodeOperations(): array {
+  protected function providerNodeOperations(): array {
     return [
       'View' => ['view'],
       'Edit' => ['edit'],

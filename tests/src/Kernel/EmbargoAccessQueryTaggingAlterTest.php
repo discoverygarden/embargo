@@ -3,7 +3,6 @@
 namespace Drupal\Tests\embargo\Kernel;
 
 use Drupal\Tests\islandora_test_support\Traits\DatabaseQueryTestTraits;
-use Drupal\Tests\islandora_test_support\Traits\IslandoraContentTypeTestTraits;
 
 /**
  * Tests access queries are properly altered by embargo module.
