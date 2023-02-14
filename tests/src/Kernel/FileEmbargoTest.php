@@ -17,7 +17,7 @@ class FileEmbargoTest extends EmbargoKernelTestBase {
   public function testCreateFileEmbargo() {
     $node = $this->createNode();
     $this->createMedia($this->createFile(), $node);
-    $this->assertInstanceOf('\Drupal\embargo\EmbargoInterface', $this->createEmbargo($node, EmbargoInterface::EMBARGO_TYPE_FILE));
+    $this->assertInstanceOf(EmbargoInterface::class, $this->createEmbargo($node, EmbargoInterface::EMBARGO_TYPE_FILE));
   }
 
   /**
@@ -73,9 +73,7 @@ class FileEmbargoTest extends EmbargoKernelTestBase {
     $file = $this->createFile();
     $media = $this->createMedia($file, $node);
     $fileEmbargo = $this->createEmbargo($node, EmbargoInterface::EMBARGO_TYPE_FILE);
-
     $fileEmbargo->delete();
-
     $this->assertTrue($media->access($operation, $this->user));
     $this->assertTrue($file->access($operation, $this->user));
   }

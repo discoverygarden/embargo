@@ -2,7 +2,7 @@
 
 namespace Drupal\Tests\embargo\Kernel;
 
-use Drupal\Core\Database\Database;
+use Drupal\Tests\islandora_test_support\Traits\DatabaseQueryTestTraits;
 
 /**
  * Tests access queries are properly altered by embargo module.
@@ -10,6 +10,8 @@ use Drupal\Core\Database\Database;
  * @group embargo
  */
 class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
+
+  use DatabaseQueryTestTraits;
 
   /**
    * {@inheritdoc}
@@ -31,12 +33,7 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
    * Verifies that a user can view non-embargoed nodes only.
    */
   public function testEmbargoNodeQueryAlterAccess() {
-    $query = Database::getConnection()->select('node', 'n')
-      ->fields('n');
-    $query->addTag('node_access');
-    $query->addMetaData('op', 'view');
-    $query->addMetaData('account', $this->user);
-
+    $query = $this->generateSelectAccessQuery('node', $this->user);
     $result = $query->execute()->fetchAll();
     $this->assertCount(1, $result, 'User can only view non-embargoed node.');
   }
@@ -47,12 +44,7 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
    * Verifies that a user cannot view the media of an embargoed node.
    */
   public function testNodeEmbargoReferencedMediaAccessQueryAlterAccessDenied() {
-    $query = Database::getConnection()->select('media', 'm')
-      ->fields('m');
-    $query->addTag('media_access');
-    $query->addMetaData('op', 'view');
-    $query->addMetaData('account', $this->user);
-
+    $query = $this->generateSelectAccessQuery('media', $this->user);
     $result = $query->execute()->fetchAll();
     $this->assertCount(0, $result, 'Media of embargoed nodes cannot be viewed');
   }
@@ -63,11 +55,7 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
    * Verifies that a user cannot view the files of an embargoed node.
    */
   public function testNodeEmbargoReferencedFileAccessQueryAlterAccessDenied() {
-    $query = Database::getConnection()->select('file_managed', 'f')
-      ->fields('f');
-    $query->addTag('file_access');
-    $query->addMetaData('op', 'view');
-    $query->addMetaData('account', $this->user);
+    $query = $this->generateSelectAccessQuery('file', $this->user);
     $result = $query->execute()->fetchAll();
     $this->assertCount(1, $result, 'File of embargoed nodes cannot be viewed');
   }
@@ -81,11 +69,7 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
    */
   public function testDeletedNodeEmbargoNodeAccessQueryAlterAccessAllowed() {
     $this->embargo->delete();
-    $query = Database::getConnection()->select('node', 'n')
-      ->fields('n');
-    $query->addTag('node_access');
-    $query->addMetaData('op', 'view');
-    $query->addMetaData('account', $this->user);
+    $query = $this->generateSelectAccessQuery('node', $this->user);
 
     $result = $query->execute()->fetchAll();
     $this->assertCount(2, $result, 'Non embargoed nodes can be viewed');
@@ -100,11 +84,7 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
    */
   public function testDeletedNodeEmbargoMediaAccessQueryAlterAccessAllowed() {
     $this->embargo->delete();
-    $query = Database::getConnection()->select('media', 'm')
-      ->fields('m');
-    $query->addTag('media_access');
-    $query->addMetaData('op', 'view');
-    $query->addMetaData('account', $this->user);
+    $query = $this->generateSelectAccessQuery('media', $this->user);
 
     $result = $query->execute()->fetchAll();
     $this->assertCount(1, $result,
@@ -120,11 +100,7 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
    */
   public function testDeletedNodeEmbargoFileAccessQueryAlterAccessAllowed() {
     $this->embargo->delete();
-    $query = Database::getConnection()->select('file_managed', 'f')
-      ->fields('f');
-    $query->addTag('file_access');
-    $query->addMetaData('op', 'view');
-    $query->addMetaData('account', $this->user);
+    $query = $this->generateSelectAccessQuery('file', $this->user);
 
     $result = $query->execute()->fetchAll();
     $this->assertCount(2, $result,

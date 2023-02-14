@@ -111,7 +111,7 @@ class IpRangeEmbargoTest extends EmbargoKernelTestBase {
    * Test creation of Ip range entity.
    */
   public function testIpRangeCreation() {
-    $this->assertInstanceOf('\Drupal\embargo\IpRangeInterface',
+    $this->assertInstanceOf(IpRangeInterface::class,
       $this->createIpRangeEntity($this->ipRange));
   }
 

@@ -16,7 +16,7 @@ class NodeEmbargoTest extends EmbargoKernelTestBase {
    */
   public function testCreateNodeEmbargo() {
     $node = $this->createNode();
-    $this->assertInstanceOf('\Drupal\embargo\EmbargoInterface', $this->createEmbargo($node, EmbargoInterface::EMBARGO_TYPE_NODE));
+    $this->assertInstanceOf(EmbargoInterface::class, $this->createEmbargo($node, EmbargoInterface::EMBARGO_TYPE_NODE));
   }
 
   /**
