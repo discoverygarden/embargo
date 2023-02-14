@@ -34,7 +34,6 @@ class NodeEmbargoTest extends EmbargoKernelTestBase {
     }
     else {
       $this->assertFalse($nonEmbargoednode->access($operation, $this->user));
-      $this->assertFalse($nonEmbargoednode->access($operation, $this->user));
     }
   }
 
@@ -73,7 +72,6 @@ class NodeEmbargoTest extends EmbargoKernelTestBase {
       $this->assertTrue($embargoednode->access($operation, $this->user));
     }
     else {
-      $this->assertFalse($embargoednode->access($operation, $this->user));
       $this->assertFalse($embargoednode->access($operation, $this->user));
     }
   }
