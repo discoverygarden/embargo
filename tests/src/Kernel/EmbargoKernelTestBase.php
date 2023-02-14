@@ -43,21 +43,22 @@ abstract class EmbargoKernelTestBase extends AbstractIslandoraKernelTestBase {
   /**
    * Creates an embargo.
    */
-  protected function createEmbargo($node, $type = EmbargoInterface::EMBARGO_TYPE_NODE, $ipRange = NULL, $expiration_type = EmbargoInterface::EXPIRATION_TYPE_INDEFINITE) {
+  protected function createEmbargo($node, $type = EmbargoInterface::EMBARGO_TYPE_NODE, $ipRange = NULL, $expirationDate = NULL) {
     /** @var \Drupal\embargo\EmbargoInterface $entity */
     $entity = $this->createEntity('embargo', [
       'embargo_type' => $type,
       'embargoed_node' => $node->id(),
-      'expiration_type' => $expiration_type,
+      'expiration_type' => $expirationDate ? EmbargoInterface::EXPIRATION_TYPE_SCHEDULED : EmbargoInterface::EXPIRATION_TYPE_INDEFINITE,
+      'expiration_date' => $expirationDate,
       'exempt_ips' => $ipRange ? $ipRange->id() : NULL,
     ]);
     return $entity;
   }
 
   /**
-   * Data provider for testGetTitleIsolated().
+   * Data provider for media operations.
    */
-  protected function providerMediaFileOperations(): array {
+  public function providerMediaFileOperations(): array {
     return [
       'View' => ['view'],
       'Download' => ['download'],
@@ -67,7 +68,7 @@ abstract class EmbargoKernelTestBase extends AbstractIslandoraKernelTestBase {
   /**
    * Data provider for node operations.
    */
-  protected function providerNodeOperations(): array {
+  public function providerNodeOperations(): array {
     return [
       'View' => ['view'],
       'Edit' => ['edit'],
