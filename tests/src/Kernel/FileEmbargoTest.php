@@ -71,6 +71,7 @@ class FileEmbargoTest extends EmbargoKernelTestBase {
   ) {
     $node = $this->createNode();
     $file = $this->createFile();
+    $media = $this->createMedia($file, $node);
     $this->assertTrue($media->access($operation, $this->user));
     $fileEmbargo = $this->createEmbargo($node, EmbargoInterface::EMBARGO_TYPE_FILE);
     $fileEmbargo->delete();
