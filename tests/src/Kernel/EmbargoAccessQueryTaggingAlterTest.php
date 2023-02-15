@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\embargo\Kernel;
 
+use Drupal\embargo\EmbargoInterface;
 use Drupal\Tests\islandora_test_support\Traits\DatabaseQueryTestTraits;
 
 /**
@@ -103,6 +104,35 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
     $result = $query->execute()->fetchAll();
     $this->assertCount(2, $result,
       'Files of non embargoed nodes can be viewed');
+  }
+
+  /**
+   * Tests embargo scheduled to be unpublished in the future.
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
+   */
+  public function testPublishScheduledEmbargoAccess() {
+    // Create an embargo scheduled to be unpublished in the future.
+    $this->setEmbargoFutureUnpublishDate($this->embargo);
+
+    $nodeCount = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
+    $this->assertCount(1, $nodeCount,
+      'Node is still embargoed.');
+  }
+
+  /**
+   * Tests embargo scheduled to be unpublished in the past.
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
+   */
+  public function testUnpublishScheduledEmbargoAccess() {
+    $this->embargo->setExpirationType(EmbargoInterface::EXPIRATION_TYPE_SCHEDULED)->save();
+    // Create an embargo scheduled to be unpublished in the future.
+    $this->setEmbargoPastUnpublishDate($this->embargo);
+
+    $nodeCount = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
+    $this->assertCount(1, $nodeCount,
+      'Embargo has been unpublished.');
   }
 
 }

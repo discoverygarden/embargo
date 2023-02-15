@@ -91,7 +91,7 @@ class IpRangeEmbargoTest extends EmbargoKernelTestBase {
   protected IpRangeInterface $currentIpRangeEntity;
 
   /**
-   * {@inheritDoc}
+   * Sets up entities for testing.
    */
   public function setUp(): void {
     parent::setUp();

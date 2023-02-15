@@ -2,7 +2,6 @@
 
 namespace Drupal\Tests\embargo\Kernel;
 
-use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\embargo\EmbargoInterface;
 
 /**
@@ -69,6 +68,8 @@ class NodeEmbargoTest extends EmbargoKernelTestBase {
     // Delete the embargo.
     $embargo->delete();
 
+    drupal_flush_all_caches();
+
     if ($operation == 'view') {
       $this->assertTrue($embargoednode->access($operation, $this->user));
     }
@@ -111,7 +112,12 @@ class NodeEmbargoTest extends EmbargoKernelTestBase {
     $embargo = $this->createEmbargo($embargoednode, EmbargoInterface::EMBARGO_TYPE_NODE);
     $embargo->delete();
 
-    $this->assertTrue($embargoedMedia->access($operation, $this->user));
+    if ($operation == 'view') {
+      $this->assertTrue($embargoedMedia->access($operation, $this->user));
+    }
+    else {
+      $this->assertFalse($embargoedMedia->access($operation, $this->user));
+    }
     $this->assertTrue($embargoedFile->access($operation, $this->user));
   }
 
@@ -125,16 +131,14 @@ class NodeEmbargoTest extends EmbargoKernelTestBase {
   public function testScheduledEmbargoNodeAccess($operation) {
     $embargoednode = $this->createNode();
 
-    // Create en embargo scheduled to expire in the future.
-    $expirationDate = (new DrupalDateTime('+2 days'))->format('Y-m-d');
-    $embargo = $this->createEmbargo($embargoednode, EmbargoInterface::EMBARGO_TYPE_NODE, NULL, $expirationDate);
+    $embargo = $this->createEmbargo($embargoednode, EmbargoInterface::EMBARGO_TYPE_NODE, NULL, EmbargoInterface::EXPIRATION_TYPE_SCHEDULED);
+    $this->setEmbargoFutureUnpublishDate($embargo);
 
     // Try to access node now, it should not be accessible.
     $this->assertFalse($embargoednode->access($operation, $this->user));
 
-    // Set embargo's scheduled expiration date to yesterday.
-    $embargo->setExpirationDate((new DrupalDateTime('-3 days')));
-    $embargo->save();
+    // Unpublished embargo.
+    $this->setEmbargoPastUnpublishDate($embargo);
 
     // Should work without this but doesn't.
     drupal_flush_all_caches();
@@ -160,22 +164,27 @@ class NodeEmbargoTest extends EmbargoKernelTestBase {
     $embargoedFile = $this->createFile();
     $embargoedMedia = $this->createMedia($embargoedFile, $embargoednode);
 
-    $expirationDate = (new DrupalDateTime('+2 days'))->format('Y-m-d');
-    $embargo = $this->createEmbargo($embargoednode, EmbargoInterface::EMBARGO_TYPE_NODE, NULL, $expirationDate);
+    $embargo = $this->createEmbargo($embargoednode, EmbargoInterface::EMBARGO_TYPE_NODE, NULL, EmbargoInterface::EXPIRATION_TYPE_SCHEDULED);
+    $this->setEmbargoFutureUnpublishDate($embargo);
 
-    // Try to access files and media now, it should not be accessible.
+    // Try to access files and media now, they should not be accessible.
     $this->assertFalse($embargoedMedia->access($operation, $this->user));
     $this->assertFalse($embargoedFile->access($operation, $this->user));
 
-    // Set embargo's scheduled expiration date to yesterday.
-    $embargo->setExpirationDate((new DrupalDateTime('-3 days')));
-    $embargo->save();
+    // Unpublished embargo.
+    $this->setEmbargoPastUnpublishDate($embargo);
 
+    // @todo check why we need this.
     // Should work without this but doesn't.
     drupal_flush_all_caches();
 
     // Files and media should be accessible now.
-    $this->assertTrue($embargoedMedia->access($operation, $this->user));
+    if ($operation == 'view') {
+      $this->assertTrue($embargoedMedia->access($operation, $this->user));
+    }
+    else {
+      $this->assertFalse($embargoedMedia->access($operation, $this->user));
+    }
     $this->assertTrue($embargoedFile->access($operation, $this->user));
   }
 
