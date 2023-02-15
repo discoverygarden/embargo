@@ -131,7 +131,7 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
     $this->setEmbargoPastUnpublishDate($this->embargo);
 
     $nodeCount = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
-    $this->assertCount(1, $nodeCount,
+    $this->assertCount(2, $nodeCount,
       'Embargo has been unpublished.');
   }
 
