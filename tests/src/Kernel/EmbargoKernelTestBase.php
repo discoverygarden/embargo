@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\embargo\Kernel;
 
+use Drupal\embargo\Entity\IpRange;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\embargo\EmbargoInterface;
 use Drupal\embargo\IpRangeInterface;
@@ -41,8 +42,11 @@ abstract class EmbargoKernelTestBase extends AbstractIslandoraKernelTestBase {
    * Creates an iprange entity.
    *
    * @var string $ipRange
+   *
+   * @return \Drupal\embargo\Entity\IpRange
+   *   The created iprange entity.
    */
-  protected function createIpRangeEntity(string $ipRange) {
+  protected function createIpRangeEntity(string $ipRange): IpRange {
     /** @var \Drupal\embargo\Entity\IpRange $entity */
     $entity = $this->createEntity('embargo_ip_range', [
       'label' => 'Ip Range Embargo',
@@ -67,7 +71,7 @@ abstract class EmbargoKernelTestBase extends AbstractIslandoraKernelTestBase {
    * @return \Drupal\embargo\EmbargoInterface
    *   An embargo entity.
    */
-  protected function createEmbargo(NodeInterface $node, ?string $type = EmbargoInterface::EMBARGO_TYPE_NODE, ?IpRangeInterface $ipRange = NULL, ?string $expirationType = EmbargoInterface::EXPIRATION_TYPE_INDEFINITE) {
+  protected function createEmbargo(NodeInterface $node, ?string $type = EmbargoInterface::EMBARGO_TYPE_NODE, ?IpRangeInterface $ipRange = NULL, ?string $expirationType = EmbargoInterface::EXPIRATION_TYPE_INDEFINITE): EmbargoInterface {
     /** @var \Drupal\embargo\EmbargoInterface $entity */
     $entity = $this->createEntity('embargo', [
       'embargo_type' => $type,

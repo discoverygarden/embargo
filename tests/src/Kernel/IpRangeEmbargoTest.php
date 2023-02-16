@@ -77,7 +77,7 @@ class IpRangeEmbargoTest extends EmbargoKernelTestBase {
   protected EmbargoInterface $embargoWithCurrentIpRange;
 
   /**
-   * Embargo with different than current IP range exempt.
+   * Embargo with different from current IP range exempt.
    *
    * @var \Drupal\embargo\EmbargoInterface
    */
@@ -92,6 +92,8 @@ class IpRangeEmbargoTest extends EmbargoKernelTestBase {
 
   /**
    * Sets up entities for testing.
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function setUp(): void {
     parent::setUp();

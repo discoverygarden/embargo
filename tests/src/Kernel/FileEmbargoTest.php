@@ -13,6 +13,8 @@ class FileEmbargoTest extends EmbargoKernelTestBase {
 
   /**
    * Test node embargo creation.
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function testCreateFileEmbargo() {
     $node = $this->createNode();
@@ -26,6 +28,8 @@ class FileEmbargoTest extends EmbargoKernelTestBase {
    * View operation should be allowed on the node.
    *
    * @dataProvider providerNodeOperations
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function testFileEmbargoedNodeAccessAllowed($operation) {
     $node = $this->createNode();
@@ -46,6 +50,8 @@ class FileEmbargoTest extends EmbargoKernelTestBase {
    * All operations should be denied on embargoed file and media.
    *
    * @dataProvider providerMediaFileOperations
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function testEmbargoedNodeRelatedMediaFileAccessDenied($operation) {
     $node = $this->createNode();

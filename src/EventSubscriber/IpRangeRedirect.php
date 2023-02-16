@@ -78,6 +78,7 @@ class IpRangeRedirect implements EventSubscriberInterface {
     $request = $event->getRequest();
     /** @var \Drupal\embargo\EmbargoStorageInterface $storage */
     $storage = $this->entityTypeManager->getStorage('embargo');
+    $rs = $request->getClientIp();
     foreach ($request->attributes->all() as $attribute) {
       if ($attribute instanceof EntityInterface) {
         $results = $storage->getApplicableNonExemptNonExpiredEmbargoes(
