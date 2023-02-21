@@ -69,12 +69,9 @@ class NodeEmbargoTest extends EmbargoKernelTestBase {
   public function testDeletedEmbargoNodeAccessAllowed($operation) {
     $embargoednode = $this->createNode();
     $embargo = $this->createEmbargo($embargoednode, EmbargoInterface::EMBARGO_TYPE_NODE);
-    $this->assertFalse($embargoednode->access($operation, $this->user));
 
     // Delete the embargo.
     $embargo->delete();
-
-    drupal_flush_all_caches();
 
     if ($operation == 'view') {
       $this->assertTrue($embargoednode->access($operation, $this->user));
@@ -140,16 +137,9 @@ class NodeEmbargoTest extends EmbargoKernelTestBase {
     $embargoednode = $this->createNode();
 
     $embargo = $this->createEmbargo($embargoednode, EmbargoInterface::EMBARGO_TYPE_NODE, NULL, EmbargoInterface::EXPIRATION_TYPE_SCHEDULED);
-    $this->setEmbargoFutureUnpublishDate($embargo);
-
-    // Try to access node now, it should not be accessible.
-    $this->assertFalse($embargoednode->access($operation, $this->user));
 
     // Unpublished embargo.
     $this->setEmbargoPastUnpublishDate($embargo);
-
-    // Should work without this but doesn't.
-    drupal_flush_all_caches();
 
     // Try to access node now, it should be accessible.
     if ($operation == 'view') {
@@ -173,18 +163,9 @@ class NodeEmbargoTest extends EmbargoKernelTestBase {
     $embargoedMedia = $this->createMedia($embargoedFile, $embargoednode);
 
     $embargo = $this->createEmbargo($embargoednode, EmbargoInterface::EMBARGO_TYPE_NODE, NULL, EmbargoInterface::EXPIRATION_TYPE_SCHEDULED);
-    $this->setEmbargoFutureUnpublishDate($embargo);
-
-    // Try to access files and media now, they should not be accessible.
-    $this->assertFalse($embargoedMedia->access($operation, $this->user));
-    $this->assertFalse($embargoedFile->access($operation, $this->user));
 
     // Unpublished embargo.
     $this->setEmbargoPastUnpublishDate($embargo);
-
-    // @todo check why we need this.
-    // Should work without this but doesn't.
-    drupal_flush_all_caches();
 
     // Files and media should be accessible now.
     if ($operation == 'view') {

@@ -302,7 +302,7 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
    * {@inheritdoc}
    */
   public function setExpirationDate(?DrupalDateTime $date): EmbargoInterface {
-    $this->set('expiration_date', is_null($date) ? $date : $date->format('Y-m-d'));
+    $this->set('expiration_date', is_null($date) ? $date : $date->format('c'));
     return $this;
   }
 
