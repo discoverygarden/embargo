@@ -10,6 +10,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\TypedData\Exception\MissingDataException;
+use Drupal\datetime\Plugin\Field\FieldType\DateTimeItemInterface;
 use Drupal\embargo\EmbargoInterface;
 use Drupal\embargo\IpRangeInterface;
 use Drupal\node\NodeInterface;
@@ -302,7 +303,7 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
    * {@inheritdoc}
    */
   public function setExpirationDate(?DrupalDateTime $date): EmbargoInterface {
-    $this->set('expiration_date', is_null($date) ? $date : $date->format('c'));
+    $this->set('expiration_date', is_null($date) ? $date : $date->format(DateTimeItemInterface::DATE_STORAGE_FORMAT));
     return $this;
   }
 
