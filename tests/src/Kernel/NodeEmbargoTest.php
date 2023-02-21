@@ -117,12 +117,7 @@ class NodeEmbargoTest extends EmbargoKernelTestBase {
     $embargo = $this->createEmbargo($embargoednode, EmbargoInterface::EMBARGO_TYPE_NODE);
     $embargo->delete();
 
-    if ($operation == 'view') {
-      $this->assertTrue($embargoedMedia->access($operation, $this->user));
-    }
-    else {
-      $this->assertFalse($embargoedMedia->access($operation, $this->user));
-    }
+    $this->assertTrue($embargoedMedia->access($operation, $this->user));
     $this->assertTrue($embargoedFile->access($operation, $this->user));
   }
 
@@ -168,12 +163,7 @@ class NodeEmbargoTest extends EmbargoKernelTestBase {
     $this->setEmbargoPastUnpublishDate($embargo);
 
     // Files and media should be accessible now.
-    if ($operation == 'view') {
-      $this->assertTrue($embargoedMedia->access($operation, $this->user));
-    }
-    else {
-      $this->assertFalse($embargoedMedia->access($operation, $this->user));
-    }
+    $this->assertTrue($embargoedMedia->access($operation, $this->user));
     $this->assertTrue($embargoedFile->access($operation, $this->user));
   }
 

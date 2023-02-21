@@ -24,15 +24,19 @@ abstract class EmbargoKernelTestBase extends AbstractIslandoraKernelTestBase {
   protected $user;
 
   /**
+   * {@inheritdoc}
+   */
+  protected static $modules = ['field', 'options', 'datetime'];
+
+  /**
    * Sets up the basic modules and schemas for testing embargoes.
    *
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function setUp() : void {
     parent::setUp();
-    $this->installModuleWithDependencies([
-      'field', 'options', 'datetime', 'embargo',
-    ]);
+    $this->enableModules(['islandora_hierarchical_access', 'embargo']);
+    $this->installSchema('islandora_hierarchical_access', ['islandora_hierarchical_access_lut']);
     $this->installEntitySchema('embargo');
     $this->installEntitySchema('embargo_ip_range');
     $this->user = $this->setUpCurrentUser([], ['access content', 'view media'], FALSE);
