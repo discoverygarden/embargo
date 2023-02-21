@@ -35,7 +35,7 @@ jobs:
       # XXX: Installation of the module is presently a little funky...
       # "require-dev" doesn't quite do the trick, as it's only usable at the
       # root-project level.
-      COMPOSER_PACKAGE_PREREQUISITES: >
+      COMPOSER_PACKAGE_PREREQUISITES: >-
         "discoverygarden/islandora_test_support:^1"
       # Patches need to be publically accessible, presently (so no private PRs,
       # at present).
