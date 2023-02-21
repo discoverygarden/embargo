@@ -8,6 +8,7 @@ use Drupal\Core\Database\Query\SelectInterface;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Session\AccountProxyInterface;
+use Drupal\datetime\Plugin\Field\FieldType\DateTimeItemInterface;
 use Drupal\embargo\EmbargoInterface;
 use Drupal\islandora_hierarchical_access\Access\QueryConjunctionTrait;
 use Drupal\islandora_hierarchical_access\LUTGeneratorInterface;
@@ -176,7 +177,7 @@ class QueryTagger {
       // ... a scheduled embargo...
       ->condition('e.expiration_type', EmbargoInterface::EXPIRATION_TYPE_SCHEDULED)
       // ... has a date in the past.
-      ->condition('e.expiration_date', $this->dateFormatter->format($this->time->getRequestTime(), 'custom', 'c'), '<')
+      ->condition('e.expiration_date', $this->dateFormatter->format($this->time->getRequestTime(), 'custom', DateTimeItemInterface::DATE_STORAGE_FORMAT), '<')
     );
 
     // ... the incoming IP is in an exempt range; or...
