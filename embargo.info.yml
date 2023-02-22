@@ -4,6 +4,7 @@ type: module
 core_version_requirement: ^9
 configure: embargo.settings
 dependencies:
+  - drupal:datetime
   - drupal:file
   - drupal:field
   - drupal:node
