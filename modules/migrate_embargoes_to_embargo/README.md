@@ -34,6 +34,7 @@ while true; do
   echo
   case "$REPLY" in
     y|Y)
+      wwwdrush entity:delete embargoes_ip_range_entity
       wwwdrush entity:delete embargoes_content_entity
       wwwdrush pmu embargoes migrate_embargoes_to_embargo
       break
