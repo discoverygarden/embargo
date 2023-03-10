@@ -60,6 +60,10 @@ class PermissionsMapKernelTest extends KernelTestBase {
    * Data provider of our permission mapping.
    *
    * @return array
+   *   An associative array mapping an approximate name for the test case to
+   *   a two-tuple representing:
+   *   - the old permission from which we are mapping; and,
+   *   - the new permission to which we are mapping.
    */
   public function mapping() : array {
     return [
@@ -68,5 +72,5 @@ class PermissionsMapKernelTest extends KernelTestBase {
       'bypass' => ['bypass embargoes restrictions', 'bypass embargo access'],
     ];
   }
-  
+
 }
