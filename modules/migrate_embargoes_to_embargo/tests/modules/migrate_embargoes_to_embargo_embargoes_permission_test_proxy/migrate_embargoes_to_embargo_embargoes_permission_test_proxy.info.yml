@@ -1,0 +1,9 @@
+---
+name: Embargoes permissions proxy
+description: >
+  Container for the 'embargoes' permissions, to avoid created a dependency on a
+  module we are replacing.
+core_version_requirement: ^9
+type: module
+hidden: true
+dependencies: []

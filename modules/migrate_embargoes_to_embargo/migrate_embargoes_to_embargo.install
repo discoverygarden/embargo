@@ -1,0 +1,55 @@
+<?php
+
+/**
+ * @file
+ * Installation hooks.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function migrate_embargoes_to_embargo_install() {
+  _migrate_embargoes_to_embargo_map_permissions();
+}
+
+/**
+ * Map "embargoes" permissions to their "embargo" equivalents.
+ */
+function _migrate_embargoes_to_embargo_map_permissions() : void {
+
+  /** @var \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager */
+  $entity_type_manager = \Drupal::service('entity_type.manager');
+  /** @var \Drupal\user\RoleStorageInterface $role_storage */
+  $role_storage = $entity_type_manager->getStorage('user_role');
+
+  // Load ALL the roles! Not expecting a terribly huge number, so we should be
+  // fine.
+  /** @var \Drupal\user\RoleInterface[] $roles */
+  $roles = $role_storage->loadMultiple();
+
+  // Mapping of old (embargoes) to new (embargo) permissions.
+  $perms_to_map = [
+    'administer embargoes settings' => 'administer embargo',
+    'manage embargoes' => 'manage embargo',
+    'bypass embargoes restrictions' => 'bypass embargo access',
+  ];
+
+  $transaction = \Drupal::database()->startTransaction();
+  try {
+    foreach ($roles as $role) {
+      foreach ($perms_to_map as $old => $new) {
+        if ($role->hasPermission($old) && !$role->hasPermission($new)) {
+          $role->grantPermission($new)
+            ->save();
+        }
+      }
+    }
+    // Commit the transaction.
+    unset($transaction);
+  }
+  catch (\Exception $e) {
+    $transaction->rollBack();
+    throw new \Exception('Failed to migrate permissions.', 0, $e);
+  }
+
+}
