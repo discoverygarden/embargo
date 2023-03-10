@@ -80,7 +80,7 @@ class EmbargoRouteSubscriber extends RouteSubscriberBase {
           '_title' => 'Embargoes',
         ])
         ->addRequirements([
-          '_permission' => 'manage embargoes',
+          '_permission' => 'manage embargo',
         ])
         ->setOption('_admin_route', TRUE)
         ->setOption('_embargo_type_id', $entity_type_id)
