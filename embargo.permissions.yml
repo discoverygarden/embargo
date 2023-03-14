@@ -3,6 +3,10 @@ administer embargo:
   title: 'Administer embargo'
   description: 'Administer embargo entities and embargo settings.'
   restrict access: true
+manage embargo:
+  title: 'Manage embargo'
+  description: 'Apply, update and lift embargo policies on content.'
+  restrict access: true
 bypass embargo access:
   title: 'Bypass embargo access control'
   description: 'Bypass access control enforced by embargo entities.'
