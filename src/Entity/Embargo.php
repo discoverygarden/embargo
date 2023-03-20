@@ -175,8 +175,8 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
       ]);
 
     $fields['additional_emails'] = BaseFieldDefinition::create('email')
-      ->setLabel(t('Additional E-mails'))
-      ->setDescription(t('For contact changes to this Embaro.'))
+      ->setLabel(t('Additional Emails'))
+      ->setDescription(t('For contact changes to this embargo.'))
       ->setTranslatable(FALSE)
       ->setRevisionable(FALSE)
       ->setRequired(FALSE)
