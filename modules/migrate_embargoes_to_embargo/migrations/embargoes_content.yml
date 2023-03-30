@@ -15,7 +15,14 @@ destination:
   translations: false
 process:
   label: label
-  expiration_type: expiration_type
+  expiration_type:
+    - plugin: static_map
+      source: expiration_type
+      bypass: true
+      map:
+        '0': 0
+        '1': 1
+      default_value: 0
   expiration_date: expiration_date
   exempt_ips:
     - plugin: sub_process
