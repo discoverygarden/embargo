@@ -18,7 +18,6 @@ process:
   expiration_type:
     - plugin: static_map
       source: expiration_type
-      bypass: true
       map:
         '0': 0
         '1': 1
