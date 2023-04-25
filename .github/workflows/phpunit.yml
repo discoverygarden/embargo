@@ -10,6 +10,3 @@ jobs:
   PHPUnit:
     uses: discoverygarden/phpunit-action/.github/workflows/phpunit.yml@v1
     secrets: inherit
-    with:
-      composer.rereqs: >-
-        "discoverygarden/islandora_test_support:^1"
