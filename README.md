@@ -33,6 +33,9 @@ An embargo can be applied to an existing node by navigating to
 `node/{node_id}/embargoes`. From here, an embargo can be applied if it doesn't
 already exist, and existing embargoes can be modified or removed.
 
+## Known Issues
+Embargoed items may show up in search results. To work around this at a cost to performance you can enable access checking in your search views.
+
 ## Maintainers/Sponsors
 
 * [discoverygarden](http://support.discoverygarden.ca)
