@@ -36,9 +36,14 @@ already exist, and existing embargoes can be modified or removed.
 ## Known Issues
 Embargoed items may show up in search results. To work around this at a cost to performance you can enable access checking in your search views.
 
+## Troubleshooting/Issues
+
+Having problems or solved a problem? Contact
+[discoverygarden](http://www.discoverygarden.ca/).
+
 ## Maintainers/Sponsors
 
-* [discoverygarden](http://support.discoverygarden.ca)
+* [discoverygarden](http://www.discoverygarden.ca/)
 
 ## License
 [GPLv2](http://www.gnu.org/licenses/gpl-2.0.txt)
