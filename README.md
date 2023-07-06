@@ -45,5 +45,8 @@ Having problems or solved a problem? Contact
 
 * [discoverygarden](http://www.discoverygarden.ca/)
 
+## Attribution
+This module is heavily based on and includes contributions from [discoverygarden/embargoes](https://github.com/discoverygarden/embargoes) which was forked from [fsulib](https://github.com/fsulib/embargoes) authored by [Bryan J. Brown](https://github.com/bryjbrown).
+
 ## License
 [GPLv2](http://www.gnu.org/licenses/gpl-2.0.txt)
