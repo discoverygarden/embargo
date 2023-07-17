@@ -23,7 +23,7 @@ embargoes.
 To add an IP range for use on embargoes, navigate to
 `admin/config/content/embargoes/settings/ips` and click 'Add IP range'. Ranges
 created via this method can then be used as IP address whitelists when creating
-embargoes.
+embargoes. This [CIDR to IPv4 Conversion utility](https://www.ipaddressguide.com/cidr) can be helpful in creating valid IP ranges.
 
 ## Usage
 
