@@ -1,7 +1,7 @@
 name: Embargo
 description: 'Embargo content indefinitely or till specified date, limiting access to specific users and/or IP addresses.'
 type: module
-core_version_requirement: ^9
+core_version_requirement: ^9 || ^10
 configure: embargo.settings
 dependencies:
   - drupal:datetime
