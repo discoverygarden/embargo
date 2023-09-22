@@ -5,6 +5,6 @@ description: >
   Migrations and plugins to handle migrating from the older "embargoes" module
   to this newer "embargo" module.
 package: Embargo
-core_version_requirement: ^9
+core_version_requirement: ^9 || ^10
 dependencies:
   - embargo:embargo

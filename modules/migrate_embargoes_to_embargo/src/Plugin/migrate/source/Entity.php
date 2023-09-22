@@ -128,7 +128,10 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
     // particularly large number of them; however, we do not expect this to be
     // used with terribly many at the moment... like only 10s or 100s.
     $storage = $this->getStorage();
-    foreach ($storage->getQuery()->execute() as $id) {
+    $results = $storage->getQuery()
+      ->accessCheck()
+      ->execute();
+    foreach ($results as $id) {
       $array = $storage->load($id)->toArray();
       foreach ($this->getIds() as $key => $info) {
         if (is_array($array[$key])) {
