@@ -7,7 +7,6 @@ use Drupal\Core\Block\BlockBase;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\Http\RequestStack;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\Routing\ResettableStackedRouteMatchInterface;
@@ -15,6 +14,7 @@ use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\embargo\EmbargoInterface;
 use Drupal\node\NodeInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Provides a "Embargo Notifications" block.
@@ -87,7 +87,7 @@ class EmbargoNotificationBlock extends BlockBase implements ContainerFactoryPlug
    *   The plugin definition.
    * @param \Drupal\Core\Routing\ResettableStackedRouteMatchInterface $route_match
    *   A route matching interface.
-   * @param \Drupal\Core\Http\RequestStack $request_stack
+   * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
    *   The request being made to check access against.
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
    *   A configuration factory interface.
