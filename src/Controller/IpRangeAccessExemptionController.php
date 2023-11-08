@@ -46,9 +46,8 @@ class IpRangeAccessExemptionController extends ControllerBase {
   public function response() {
     $ranges = [];
     $cache_tags = [];
-    $resources = (array) $this->request->query->get('resources', []);
     /** @var \Drupal\embargo\IpRangeInterface[] $entities */
-    $entities = $this->entityTypeManager()->getStorage('embargo_ip_range')->loadMultiple((array) $this->request->query->get('ranges', []));
+    $entities = $this->entityTypeManager()->getStorage('embargo_ip_range')->loadMultiple($this->request->query->all()['ranges'] ?? []);
     foreach ($entities as $entity) {
       $ranges[] = [
         'label' => $entity->label(),
@@ -59,7 +58,7 @@ class IpRangeAccessExemptionController extends ControllerBase {
 
     return [
       '#theme' => 'embargo_ip_access_exemption',
-      '#resources' => $resources,
+      '#resources' => $this->request->query->all()['resources'] ?? [],
       '#ranges' => $ranges,
       '#contact_email' => $this->config('embargo.settings')->get('contact_email'),
       '#cache' => [
