@@ -31,7 +31,7 @@ class PermissionsMapKernelTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp() : void {
     parent::setUp();
 
     $module_path = $this->getModulePath('migrate_embargoes_to_embargo');
