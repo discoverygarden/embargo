@@ -110,15 +110,30 @@ class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFacto
    * {@inheritdoc}
    */
   public function addFieldValues(ItemInterface $item) {
-    // Hard coded IP for testing.
-    // todo: Fetch embargoes IPs, and look into multi-value field.
-    $ips = '192.168.0.1';
+    // Get node id.
+    $item_id = $item->getId();
+    $nodeId = preg_replace('/^entity:node\/(\d+):en$/', '$1', $item_id);
+
+    // Based on node object get applicable Embargoes.
+    $node = $this->entityTypeManager->getStorage('node')->load($nodeId);
+    $storages = $this->storage->getApplicableEmbargoes($node);
+
+    if (empty($storages)) {
+      return;
+    }
+
+    // Get IP range in CIDR format.
+    foreach ($storages as $embargo) {
+      foreach ($embargo->getExemptIps()->getRanges() as $range) {
+        $ip = $range['value'];
+      }
+    }
 
     // Currently getting error for multivalued field.
     // "multiple values encountered for non multiValued field ss_embargo_ip".
     // So adding single value.
     //foreach ($ips as $ip) {
-      $item->getField('embargo_ip')->addValue($ips);
+    $item->getField('embargo_ip')->addValue($ip);
     //}
   }
 
@@ -129,14 +144,35 @@ class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFacto
     $currentUserIp = $this->requestStack->getCurrentRequest()->getClientIp();
 
     if ($currentUserIp) {
-      // Add a filter condition for the current user's IP.
-      // Adding hardcoded IP for testing.
-      // Changing hard coded value impacting the result, so
-      // query processing is working.
+      // For testing only.
+      $currentUserIp = '172.18.0.186';
       // todo: add current user IP.
+      // Convert User IP into CIDR format query matching.
+      $currentUserIpCidr = $this->ipToCidr($currentUserIp);
+
+      // Add the condition to check if the user's IP is in the list using CIDR notation.
       $conditions = $query->getConditionGroup();
-      $conditions->addCondition('embargo_ip', '192.168.0.2');
+      $conditions->addCondition('embargo_ip', $currentUserIpCidr);
+
+      // Query logging for validation.
+      \Drupal::logger('embargo')->notice('Query altered: @query', ['@query' => (string) $query]);
+
     }
+  }
+
+  function ipToCidr($ip, $subnetMask = 24) {
+    $ipParts = explode('.', $ip);
+
+    // Ensure subnet mask is within valid range (0-32)
+    $subnetMask = max(0, min(32, $subnetMask));
+
+    // Calculate the network portion of the IP based on the subnet mask
+    $network = implode('.', array_slice($ipParts, 0, floor($subnetMask / 8)));
+
+    // Build the CIDR notation
+    $cidr = $network . '.0/' . $subnetMask;
+
+    return $cidr;
   }
 
 }
