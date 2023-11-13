@@ -13,12 +13,12 @@ use Drupal\search_api\Query\QueryInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
- * A search_api_solr processor to filter search results based on user IP.
+ * A search_api_solr processor to filter results based on embargo and user IP.
  *
  * @SearchApiProcessor(
  *   id = "embargo_ip_restriction",
  *   label = @Translation("Embargo IP Restriction"),
- *   description = @Translation("Combines allowed IP index and current user IP query processors."),
+ *   description = @Translation("Processor to filter results based on embargo and user IP."),
  *   stages = {
  *      "add_properties" = -10,
  *      "preprocess_query" = 20,
@@ -98,9 +98,12 @@ class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFacto
     // Define the Embargo IP property.
     $properties['embargo_ip'] = new ProcessorProperty([
       'label' => $this->t('Embargo IP'),
-      'description' => $this->t('Stores the IPs for embargo filtering.'),
+      'description' => $this->t('Stores the Embargo IPs for filtering.'),
       'type' => 'string',
       'processor_id' => $this->getPluginId(),
+      'stored' => TRUE,
+      'indexed' => TRUE,
+      'multiValued' => TRUE,
     ]);
 
     return $properties;
@@ -110,11 +113,11 @@ class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFacto
    * {@inheritdoc}
    */
   public function addFieldValues(ItemInterface $item) {
-    // Get node id.
+    // Get node ID.
     $item_id = $item->getId();
     $nodeId = preg_replace('/^entity:node\/(\d+):en$/', '$1', $item_id);
 
-    // Based on node object get applicable Embargoes.
+    // Load node based on ID, and get embargo.
     $node = $this->entityTypeManager->getStorage('node')->load($nodeId);
     $storages = $this->storage->getApplicableEmbargoes($node);
 
@@ -122,19 +125,16 @@ class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFacto
       return;
     }
 
-    // Get IP range in CIDR format.
+    // Get embargo IPs.
+    $embargoIps = [];
     foreach ($storages as $embargo) {
       foreach ($embargo->getExemptIps()->getRanges() as $range) {
-        $ip = $range['value'];
+        $embargoIps[] = $range['value'];
       }
     }
 
-    // Currently getting error for multivalued field.
-    // "multiple values encountered for non multiValued field ss_embargo_ip".
-    // So adding single value.
-    //foreach ($ips as $ip) {
-    $item->getField('embargo_ip')->addValue($ip);
-    //}
+    // Add embargo IPs in indexing data.
+    $item->getField('embargo_ip')->setValues($embargoIps);
   }
 
   /**
@@ -144,23 +144,33 @@ class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFacto
     $currentUserIp = $this->requestStack->getCurrentRequest()->getClientIp();
 
     if ($currentUserIp) {
-      // For testing only.
-      $currentUserIp = '172.18.0.186';
-      // todo: add current user IP.
       // Convert User IP into CIDR format query matching.
       $currentUserIpCidr = $this->ipToCidr($currentUserIp);
 
-      // Add the condition to check if the user's IP is in the list using CIDR notation.
+      // Add the condition to check if the user's IP is in the list using CIDR notation
       $conditions = $query->getConditionGroup();
       $conditions->addCondition('embargo_ip', $currentUserIpCidr);
-
-      // Query logging for validation.
-      \Drupal::logger('embargo')->notice('Query altered: @query', ['@query' => (string) $query]);
-
     }
   }
 
+  /**
+   * Converts an IP address to CIDR notation.
+   *
+   * @param string $ip
+   *   The IP address to convert.
+   * @param int $subnetMask
+   *   The subnet mask (default is 24).
+   *
+   * @return string
+   *   The CIDR notation representation of the IP address.
+   */
   function ipToCidr($ip, $subnetMask = 24) {
+    // Check if the IP is IPv6.
+    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+      // For simplicity, let's assume a default subnet mask of 128 for IPv6
+      return $ip . '/128';
+    }
+
     $ipParts = explode('.', $ip);
 
     // Ensure subnet mask is within valid range (0-32)
