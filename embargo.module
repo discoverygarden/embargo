@@ -97,3 +97,33 @@ function embargo_theme($existing, $type, $theme, $path) {
     ],
   ];
 }
+
+
+/**
+ * Implements hook_ENTITY_TYPE_update() for embargo entities.
+ */
+function embargo_embargo_update(EntityInterface $entity) {
+  // Check if the entity has the "embargoed_node" field.
+  if ($entity->hasField('embargoed_node')) {
+    // Trigger embargoed node indexing on embargo update.
+    // Get the value of the "embargoed_node" field.
+    $node_reference = $entity->get('embargoed_node')->entity;
+
+    // Check if the referenced entity is a node.
+    if ($node_reference instanceof \Drupal\node\NodeInterface) {
+
+      // Load the node using the entity type manager.
+      $entityTypeManager = \Drupal::entityTypeManager();
+      $node = $entityTypeManager->getStorage('node')->load($node_reference->id());
+
+      // @see : search_api_entity_update().
+      // Call this hook on behalf of the Content Entity datasource.
+      \Drupal::getContainer()->get('search_api.entity_datasource.tracking_manager')
+        ->entityUpdate($node);
+
+      // Attempt to track all items as changed that indexed updated data indirectly.
+      \Drupal::getContainer()->get('search_api.tracking_helper')
+        ->trackReferencedEntityUpdate($node);
+    }
+  }
+}
