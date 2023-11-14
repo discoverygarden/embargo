@@ -104,6 +104,7 @@ class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFacto
       'stored' => TRUE,
       'indexed' => TRUE,
       'multiValued' => TRUE,
+      'is_list' => TRUE,
     ]);
 
     return $properties;
