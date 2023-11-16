@@ -26,7 +26,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   }
  * )
  */
-class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFactoryPluginInterface{
+class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFactoryPluginInterface {
 
   /**
    * The request stack.
@@ -66,7 +66,7 @@ class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFacto
    * @param mixed $plugin_definition
    *   The plugin implementation definition.
    * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
-   *    The request stack.
+   *   The request stack.
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The Entity Type Manager.
    * @param \Drupal\Core\Session\AccountProxyInterface $currentUser
@@ -74,7 +74,7 @@ class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFacto
    *
    * @throws \Drupal\facets\Exception\InvalidProcessorException
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition,  RequestStack $request_stack, EntityTypeManagerInterface $entity_type_manager, AccountProxyInterface $currentUser) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, RequestStack $request_stack, EntityTypeManagerInterface $entity_type_manager, AccountProxyInterface $currentUser) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->requestStack = $request_stack;
     $this->entityTypeManager = $entity_type_manager;
@@ -181,7 +181,8 @@ class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFacto
       // Convert User IP into CIDR format query matching.
       $currentUserIpCidr = $this->ipToCidr($currentUserIp);
 
-      // Add the condition to check if the user's IP is in the list using CIDR notation
+      // Add the condition to check if the user's IP
+      // is in the list using CIDR notation
       $conditions->addCondition('embargo_ip', $currentUserIpCidr);
       $conditions->addCondition('embargo_ip', NULL);
     }
@@ -205,22 +206,22 @@ class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFacto
    * @return string
    *   The CIDR notation representation of the IP address.
    */
-  function ipToCidr($ip, $subnetMask = 24) {
+  public function ipToCidr($ip, $subnetMask = 24) {
     // Check if the IP is IPv6.
     if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
-      // For simplicity, let's assume a default subnet mask of 128 for IPv6
+      // For simplicity, let's assume a default subnet mask of 128 for IPv6.
       return $ip . '/128';
     }
 
     $ipParts = explode('.', $ip);
 
-    // Ensure subnet mask is within valid range (0-32)
+    // Ensure subnet mask is within valid range (0-32).
     $subnetMask = max(0, min(32, $subnetMask));
 
-    // Calculate the network portion of the IP based on the subnet mask
+    // Calculate the network portion of the IP based on the subnet mask.
     $network = implode('.', array_slice($ipParts, 0, floor($subnetMask / 8)));
 
-    // Build the CIDR notation
+    // Build the CIDR notation.
     $cidr = $network . '.0/' . $subnetMask;
 
     return $cidr;

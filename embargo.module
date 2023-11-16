@@ -9,6 +9,7 @@ use Drupal\Core\Database\Query\AlterableInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\embargo\EmbargoStorage;
+use Drupal\node\NodeInterface;
 
 /**
  * Implements hook_entity_type_alter().
@@ -109,7 +110,7 @@ function embargo_embargo_update(EntityInterface $entity) {
     $node_reference = $entity->get('embargoed_node')->entity;
 
     // Check if the referenced entity is a node.
-    if ($node_reference instanceof \Drupal\node\NodeInterface) {
+    if ($node_reference instanceof NodeInterface) {
 
       // Load the node using the entity type manager.
       $entityTypeManager = \Drupal::entityTypeManager();
@@ -120,7 +121,8 @@ function embargo_embargo_update(EntityInterface $entity) {
       \Drupal::getContainer()->get('search_api.entity_datasource.tracking_manager')
         ->entityUpdate($node);
 
-      // Attempt to track all items as changed that indexed updated data indirectly.
+      // Attempt to track all items as changed that indexed
+      // updated data indirectly.
       \Drupal::getContainer()->get('search_api.tracking_helper')
         ->trackReferencedEntityUpdate($node);
     }
