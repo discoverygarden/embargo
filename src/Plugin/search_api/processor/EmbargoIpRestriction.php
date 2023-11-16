@@ -182,7 +182,7 @@ class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFacto
       $currentUserIpCidr = $this->ipToCidr($currentUserIp);
 
       // Add the condition to check if the user's IP
-      // is in the list using CIDR notation
+      // is in the list using CIDR notation.
       $conditions->addCondition('embargo_ip', $currentUserIpCidr);
       $conditions->addCondition('embargo_ip', NULL);
     }
