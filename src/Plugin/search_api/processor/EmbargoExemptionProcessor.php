@@ -17,8 +17,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * A search_api_solr processor to filter results based on embargo and user IP.
  *
  * @SearchApiProcessor(
- *   id = "embargo_ip_restriction",
- *   label = @Translation("Embargo IP Restriction"),
+ *   id = "embargo_exemption_processor",
+ *   label = @Translation("Embargo Exemption Processor"),
  *   description = @Translation("Processor to filter results based on embargo and user IP."),
  *   stages = {
  *      "add_properties" = -10,
@@ -26,7 +26,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   }
  * )
  */
-class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFactoryPluginInterface {
+class EmbargoExemptionProcessor extends ProcessorPluginBase implements ContainerFactoryPluginInterface {
 
   /**
    * The request stack.
@@ -103,9 +103,9 @@ class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFacto
     $properties = [];
 
     // Define the Embargo IP property.
-    $properties['embargo_ip'] = new ProcessorProperty([
-      'label' => $this->t('Embargo IP'),
-      'description' => $this->t('Stores the Embargo IPs for filtering.'),
+    $properties['embargo_exempt_ip_ranges'] = new ProcessorProperty([
+      'label' => $this->t('Exempt IPs'),
+      'description' => $this->t('Stores the IP ranges that are exempt from embargo.'),
       'type' => 'string',
       'processor_id' => $this->getPluginId(),
       'stored' => TRUE,
@@ -115,8 +115,8 @@ class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFacto
     ]);
 
     // Define the exempt users property.
-    $properties['exempt_users'] = new ProcessorProperty([
-      'label' => $this->t('Exempt Users'),
+    $properties['embargo_exempt_users'] = new ProcessorProperty([
+      'label' => $this->t('Embargo exempt users'),
       'description' => $this->t('Stores the Exempt users IDs for filtering.'),
       'type' => 'integer',
       'processor_id' => $this->getPluginId(),
@@ -157,15 +157,15 @@ class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFacto
 
       // Get exempt users IDs.
       if (!empty($embargo->getExemptUsers())) {
-        foreach ($embargo->get('exempt_users')->getValue() as $user) {
+        foreach ($embargo->get('embargo_exempt_users')->getValue() as $user) {
           $exemptUsers[] = $user['target_id'];
         }
       }
     }
 
     // Add embargo IPs and exempt users IDs in indexing data.
-    $item->getField('embargo_ip')->setValues($embargoIps);
-    $item->getField('exempt_users')->setValues($exemptUsers);
+    $item->getField('embargo_exempt_ip_ranges')->setValues($embargoIps);
+    $item->getField('embargo_exempt_users')->setValues($exemptUsers);
   }
 
   /**
@@ -183,13 +183,13 @@ class EmbargoIpRestriction extends ProcessorPluginBase implements ContainerFacto
 
       // Add the condition to check if the user's IP
       // is in the list using CIDR notation.
-      $conditions->addCondition('embargo_ip', $currentUserIpCidr);
-      $conditions->addCondition('embargo_ip', NULL);
+      $conditions->addCondition('embargo_exempt_ip_ranges', $currentUserIpCidr);
+      $conditions->addCondition('embargo_exempt_ip_ranges', NULL);
     }
 
-    // Add condition for exempt_users.
+    // Add condition for embargo_exempt_users.
     if ($currentUserId) {
-      $conditions->addCondition('exempt_users', $currentUserId);
+      $conditions->addCondition('embargo_exempt_users', $currentUserId);
     }
 
     $query->addConditionGroup($conditions);
