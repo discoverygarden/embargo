@@ -16,21 +16,24 @@ See [the module's docs for more info](modules/migrate_embargoes_to_embargo/READM
 
 ## Configuration
 
-Configuration options can be set at `admin/config/content/embargoes/settings`,
-including notification options and IP range settings that can apply to
-embargoes.
+Configuration options can be set at `admin/config/content/embargo`,
+including a contact email and notification message.
+
+Embargoes can be managed at `admin/content/embargo`. 
 
 To add an IP range for use on embargoes, navigate to
-`admin/config/content/embargoes/settings/ips` and click 'Add IP range'. Ranges
+`admin/content/embargo/range` and click 'Add IP range'. Ranges
 created via this method can then be used as IP address whitelists when creating
-embargoes. This [CIDR to IPv4 Conversion utility](https://www.ipaddressguide.com/cidr) can be helpful in creating valid IP ranges.
+embargoes. This [CIDR to IPv4 Conversion utility](https://www.ipaddressguide.com/cidr) 
+can be helpful in creating valid CIDR IP ranges.
 
 ## Usage
 
 ### Applying an embargo
 
-An embargo can be applied to an existing node by navigating to
-`node/{node_id}/embargoes`. From here, an embargo can be applied if it doesn't
+An embargo can be applied to an existing node by clicking the 
+"Embargoes" tab on a node, or navigating to 
+`embargoes/node/{node_id}`. From here, an embargo can be applied if it doesn't
 already exist, and existing embargoes can be modified or removed.
 
 ## Known Issues
