@@ -7,6 +7,8 @@
 
 use Drupal\Core\Database\Query\AlterableInterface;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\embargo\EmbargoStorage;
 
@@ -96,4 +98,33 @@ function embargo_theme($existing, $type, $theme, $path) {
       ],
     ],
   ];
+}
+
+/**
+ * Add exempt_roles field.
+ */
+function embargo_update_9101(&$sandbox) {
+  $exempt_roles = BaseFieldDefinition::create('entity_reference')
+    ->setLabel(t('List of exempt roles'))
+    ->setDescription(t('These roles will be able to bypass the embargo.'))
+    ->setTranslatable(FALSE)
+    ->setRevisionable(FALSE)
+    ->setRequired(FALSE)
+    ->setDisplayConfigurable('view', FALSE)
+    ->setCardinality(FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED)
+    ->setDisplayOptions('form', [
+      'type' => 'entity_reference_autocomplete',
+    ])
+    ->setDisplayOptions('view', [
+      'type' => 'entity_reference_label',
+      'label' => 'hidden',
+    ])
+    ->setSettings([
+      'target_type' => 'user_role',
+      'handler_settings' => [
+        'include_anonymous' => FALSE,
+      ],
+    ]);
+  \Drupal::entityDefinitionUpdateManager()->installFieldStorageDefinition(
+    'exempt_roles', 'embargo', 'embargo', $exempt_roles);
 }

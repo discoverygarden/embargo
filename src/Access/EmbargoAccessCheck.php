@@ -31,7 +31,7 @@ class EmbargoAccessCheck implements EmbargoAccessCheckInterface {
   protected $request;
 
   /**
-   * Th current user.
+   * The current user.
    *
    * @var \Drupal\Core\Session\AccountInterface
    */

@@ -179,6 +179,24 @@ interface EmbargoInterface extends ContentEntityInterface {
   public function setExemptUsers(array $users): EmbargoInterface;
 
   /**
+   * Gets the list of exempt roles.
+   *
+   * @return \Drupal\user\RoleInterface[]
+   *   A list of roles exempt from the embargo.
+   */
+  public function getExemptRoles(): array;
+
+  /**
+   * Sets the list of roles exempt from this embargo.
+   *
+   * @param array $roles
+   *   A list of role entities to exempt from this embargo.
+   *
+   * @return $this
+   */
+  public function setExemptRoles(array $roles): EmbargoInterface;
+
+  /**
    * Retrieves the node being embargoed.
    *
    * @return \Drupal\node\NodeInterface|null
@@ -237,6 +255,17 @@ interface EmbargoInterface extends ContentEntityInterface {
    *   TRUE if the user is exempt otherwise FALSE.
    */
   public function isUserExempt(AccountInterface $user): bool;
+
+  /**
+   * Checks if any of the user's roles is exempt from this embargo.
+   *
+   * @param \Drupal\Core\Session\AccountInterface $user
+   *   The user to check.
+   *
+   * @return bool
+   *   TRUE if the user is exempt otherwise FALSE.
+   */
+  public function isUserRoleExempt(AccountInterface $user): bool;
 
   /**
    * Checks if the given IP address is exempt from this embargo.
