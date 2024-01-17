@@ -132,8 +132,7 @@ function embargo_form_alter(&$form, FormStateInterface $form_state, $form_id) {
       $form['embargoed_file']['widget']['#options'] = $options;
     }
     else {
-      // todo : we need to update file list when user add node in Embargoed Node
-      // field.
+      // @todo Need to update file list via ajax when Embargoed Node available.
       unset($form['embargoed_file']);
     }
 
