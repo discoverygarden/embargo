@@ -131,6 +131,11 @@ function embargo_form_alter(&$form, FormStateInterface $form_state, $form_id) {
       $options = embargo_get_filtered_file_options($node_id);
       $form['embargoed_file']['widget']['#options'] = $options;
     }
+    else {
+      // todo : we need to update file list when user add node in Embargoed Node
+      // field.
+      unset($form['embargoed_file']);
+    }
 
     // JS to add Select/Unselect All link and functionality.
     $form['#attached']['library'][] = 'embargo/custom_select_all_library';

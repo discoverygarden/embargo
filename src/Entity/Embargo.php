@@ -461,7 +461,9 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
     $exempt_users = $this->getExemptUsers();
     $has_permission = $user->hasPermission('bypass embargo access');
     return $has_permission || in_array($user->id(), array_map(function (UserInterface $user) {
-      return $user->id();}, $exempt_users));
+      return $user->id();
+      }, $exempt_users));
+
   }
 
   /**
