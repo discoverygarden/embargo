@@ -94,6 +94,27 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
       ])
       ->setSetting('allowed_values', static::getEmbargoTypeLabels());
 
+    $fields['embargoed_file'] = BaseFieldDefinition::create('entity_reference')
+      ->setLabel(t('Embargoed Media'))
+      ->setDescription(t('Media attached to the Embargoed node.'))
+      ->setCardinality(FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED)
+      ->setSetting('target_type', 'media')
+      ->setSetting('handler', 'default:media')
+      ->setDisplayOptions('view', array(
+        'label' => 'above',
+        'type' => 'entity_reference_label',
+        'weight' => 0,
+      ))
+      ->setDisplayOptions('form', array(
+        'type' => 'options_buttons',
+        'weight' => 0,
+        'settings' => [
+          'match_operator' => 'CONTAINS',
+          'size' => '60',
+          'placeholder' => '',
+        ],
+      ));
+
     $fields['expiration_type'] = BaseFieldDefinition::create('list_integer')
       ->setLabel(t('Expiration Type'))
       ->setDescription(t('A <em>Indefinite</em> embargo is never lifted.<br/>A <em>Scheduled</em> embargo is lifted on the specified date.'))
@@ -378,6 +399,24 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
   }
 
   /**
+   * {@inheritdoc}
+   */
+  public function getEmbargoedFiles(): array {
+    /** @var \Drupal\Core\Field\EntityReferenceFieldItemListInterface $field */
+    $field = $this->get('embargoed_file');
+    $files = $field->referencedEntities();
+    return $files;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setEmbargoedFiles(array $files): EmbargoInterface {
+    $this->set('embargoed_file', $files);
+    return $this;
+  }
+
+  /**
    * The maximum age for which this object may be cached.
    *
    * @return int
@@ -422,8 +461,8 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
     $exempt_users = $this->getExemptUsers();
     $has_permission = $user->hasPermission('bypass embargo access');
     return $has_permission || in_array($user->id(), array_map(function (UserInterface $user) {
-      return $user->id();
-    }, $exempt_users));
+        return $user->id();
+      }, $exempt_users));
   }
 
   /**

@@ -1,0 +1,7 @@
+custom_select_all_library:
+  version: 1.x
+  js:
+    js/custom_select_all.js: {}
+  dependencies:
+    - core/jquery
+    - core/once
