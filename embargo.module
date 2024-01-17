@@ -10,6 +10,7 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\embargo\EmbargoStorage;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\node\NodeInterface;
 
 /**
  * Implements hook_entity_type_alter().
@@ -114,7 +115,7 @@ function embargo_form_alter(&$form, FormStateInterface $form_state, $form_id) {
     // Check if the URL contains a node ID.
     $node_id = \Drupal::routeMatch()->getParameter('node');
 
-    if ($node_id instanceof \Drupal\node\NodeInterface) {
+    if ($node_id instanceof NodeInterface) {
       $node_id = $node_id->id();
     }
 

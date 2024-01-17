@@ -100,12 +100,12 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
       ->setCardinality(FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED)
       ->setSetting('target_type', 'media')
       ->setSetting('handler', 'default:media')
-      ->setDisplayOptions('view', array(
+      ->setDisplayOptions('view', [
         'label' => 'above',
         'type' => 'entity_reference_label',
         'weight' => 0,
-      ))
-      ->setDisplayOptions('form', array(
+      ])
+      ->setDisplayOptions('form', [
         'type' => 'options_buttons',
         'weight' => 0,
         'settings' => [
@@ -113,7 +113,7 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
           'size' => '60',
           'placeholder' => '',
         ],
-      ));
+      ]);
 
     $fields['expiration_type'] = BaseFieldDefinition::create('list_integer')
       ->setLabel(t('Expiration Type'))
@@ -461,8 +461,7 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
     $exempt_users = $this->getExemptUsers();
     $has_permission = $user->hasPermission('bypass embargo access');
     return $has_permission || in_array($user->id(), array_map(function (UserInterface $user) {
-        return $user->id();
-      }, $exempt_users));
+      return $user->id();}, $exempt_users));
   }
 
   /**
