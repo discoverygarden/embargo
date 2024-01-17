@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * @file
+ * Install file.
+ */
+
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Update\UpdateException;
 
@@ -25,7 +30,8 @@ function embargo_update_8001() {
 
     // Clear the cache.
     drupal_flush_all_caches();
-  } catch (UpdateException $e) {
+  }
+  catch (UpdateException $e) {
     // Handle exception if needed.
     \Drupal::logger('embargo')->error('Error adding field: @error', ['@error' => $e->getMessage()]);
     return t('Update failed: @error', ['@error' => $e->getMessage()]);

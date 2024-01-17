@@ -104,9 +104,6 @@ function embargo_theme($existing, $type, $theme, $path) {
  */
 function embargo_form_alter(&$form, FormStateInterface $form_state, $form_id) {
   if ($form_id == 'embargo_add_form' || $form_id == 'embargo_edit_form') {
-    // Get the current value of the embargo_type field.
-    $embargo_type_value = $form_state->getValue('embargo_type');
-
     // Set up visibility conditions for the embargoed_file field.
     $form['embargoed_file']['#states'] = [
       'visible' => [
