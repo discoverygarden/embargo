@@ -194,7 +194,7 @@ class QueryTagger {
 
     // ... the user has a role that is exempted from the embargo.
     $role_alias = $query->leftJoin('embargo__exempt_roles', 'r', 'e.id = %alias.entity_id');
-    $group->condition("{$role_alias}.exempt_roles_target_id",$this->user->getRoles(), 'IN');
+    $group->condition("{$role_alias}.exempt_roles_target_id", $this->user->getRoles(), 'IN');
 
     $query->condition($group);
 

@@ -475,6 +475,7 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
     }, $this->getExemptRoles());
     return count(array_intersect($exempt_role_ids, $user->getRoles())) > 0;
   }
+
   /**
    * {@inheritdoc}
    */
