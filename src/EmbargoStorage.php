@@ -109,8 +109,9 @@ class EmbargoStorage extends SqlContentEntityStorage implements EmbargoStorageIn
       $inactive = $embargo->expiresBefore($timestamp);
       $type_exempt = ($entity instanceof NodeInterface && $embargo->getEmbargoType() !== EmbargoInterface::EMBARGO_TYPE_NODE);
       $user_exempt = $embargo->isUserExempt($user);
+      $user_role_exempt = $embargo->isUserRoleExempt($user);
       $ip_exempt = $embargo->ipIsExempt($ip);
-      return !($inactive || $type_exempt || $user_exempt || $ip_exempt);
+      return !($inactive || $type_exempt || $user_exempt || $user_role_exempt|| $ip_exempt);
     });
   }
 

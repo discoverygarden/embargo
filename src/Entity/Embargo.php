@@ -14,6 +14,7 @@ use Drupal\datetime\Plugin\Field\FieldType\DateTimeItemInterface;
 use Drupal\embargo\EmbargoInterface;
 use Drupal\embargo\IpRangeInterface;
 use Drupal\node\NodeInterface;
+use Drupal\user\RoleInterface;
 use Drupal\user\UserInterface;
 
 /**
@@ -169,6 +170,28 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
       ])
       ->setSettings([
         'target_type' => 'user',
+        'handler_settings' => [
+          'include_anonymous' => FALSE,
+        ],
+      ]);
+
+    $fields['exempt_roles'] = BaseFieldDefinition::create('entity_reference')
+      ->setLabel(t('List of exempt roles'))
+      ->setDescription(t('These roles will be able to bypass the embargo.'))
+      ->setTranslatable(FALSE)
+      ->setRevisionable(FALSE)
+      ->setRequired(FALSE)
+      ->setDisplayConfigurable('view', FALSE)
+      ->setCardinality(FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED)
+      ->setDisplayOptions('form', [
+        'type' => 'entity_reference_autocomplete',
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'entity_reference_label',
+        'label' => 'hidden',
+      ])
+      ->setSettings([
+        'target_type' => 'user_role',
         'handler_settings' => [
           'include_anonymous' => FALSE,
         ],
@@ -345,6 +368,23 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
   /**
    * {@inheritdoc}
    */
+  public function getExemptRoles(): array {
+    /** @var \Drupal\Core\Field\EntityReferenceFieldItemList $exempt_roles */
+    $exempt_roles = $this->get('exempt_roles');
+    return $exempt_roles->referencedEntities();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setExemptRoles(array $roles): EmbargoInterface {
+    $this->set('exempt_roles', $roles);
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function getAdditionalEmails(): array {
     return array_map(function ($email) {
       return $email['value'];
@@ -424,6 +464,16 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
     return $has_permission || in_array($user->id(), array_map(function (UserInterface $user) {
       return $user->id();
     }, $exempt_users));
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function isUserRoleExempt(AccountInterface $user): bool {
+    $exempt_role_ids = array_map(function (RoleInterface $role) {
+      return $role->id();
+    }, $this->getExemptRoles());
+    return count(array_intersect($exempt_role_ids, $user->getRoles())) > 0;
   }
 
   /**
