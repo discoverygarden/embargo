@@ -1,13 +1,23 @@
 <!-- IP access denied. -->
 <p>
-  {% trans %}
-    Your request for the following resource could not be resolved:
-    <strong>{{ resources | safe_join(', ') }}</strong>
-  {% plural resources|length %}
-    Your request for the following resources could not be resolved:
-    <strong>{{ resources | safe_join(', ') }}</strong>
-  {% endtrans %}
+  {% if resources is not null and resources is iterable %}
+    {% set resource_list = resources|join(', ') %}
+    {% if resource_list|length == 0 %}
+      {# No resources available #}
+    {% elseif resource_list|length == 1 %}
+      {% trans %}
+        Your request for the following resource could not be resolved:
+        <strong>{{ resource_list }}</strong>
+      {% endtrans %}
+    {% else %}
+      {% trans %}
+        Your request for the following resources could not be resolved:
+        <strong>{{ resource_list }}</strong>
+      {% endtrans %}
+    {% endif %}
+  {% endif %}
 </p>
+
 <p>{{ 'Access to this resource is restricted to the following networks:'|t }}</p>
 <ul>
   {% for item in ranges %}
@@ -29,11 +39,11 @@
 </p>
 
 {% if contact_email is not empty %}
-<p>
-  {% trans %}
-    If you have any questions regarding access to this resource, contact
-    <a href="mailto:{{ contact_email }}">{{ contact_email }}</a> for more
-    information.
-  {% endtrans %}
-</p>
+  <p>
+    {% trans %}
+      If you have any questions regarding access to this resource, contact
+      <a href="mailto:{{ contact_email }}">{{ contact_email }}</a> for more
+      information.
+    {% endtrans %}
+  </p>
 {% endif %}
