@@ -12,7 +12,7 @@ use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
- * A search_api_solr processor to filter results based on embargo and user IP.
+ * A search_api_solr processor to add embargo related info.
  *
  * @SearchApiProcessor(
  *   id = "embargo_processor",
