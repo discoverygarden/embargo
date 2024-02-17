@@ -90,7 +90,7 @@ class QueryTagger {
    * @param string $type
    *   Either "node" or "file".
    */
-  public function tagAccess(SelectInterface $query, string $type) {
+  public function tagAccess(SelectInterface $query, string $type) : void {
     if (!in_array($type, ['node', 'media', 'file'])) {
       throw new \InvalidArgumentException("Unrecognized type '$type'.");
     }
@@ -104,53 +104,61 @@ class QueryTagger {
     $storage = $this->entityTypeManager->getStorage($type);
     $tables = $storage->getTableMapping()->getTableNames();
 
+    $target_aliases = [];
+
     foreach ($query->getTables() as $info) {
       if ($info['table'] instanceof SelectInterface) {
         continue;
       }
       elseif (in_array($info['table'], $tables)) {
-        $key = (strpos($info['table'], "{$type}__") === 0) ? 'entity_id' : (substr($type, 0, 1) . "id");
+        $key = (str_starts_with($info['table'], "{$type}__")) ? 'entity_id' : (substr($type, 0, 1) . "id");
         $alias = $info['alias'];
-
-        $to_apply = $query;
-        if ($info['join type'] == 'LEFT') {
-          $to_apply = $query->orConditionGroup()
-            ->isNull("{$alias}.{$key}");
-          $query->condition($to_apply);
-        }
-        if ($type === 'node') {
-          $to_apply->condition("{$alias}.{$key}", $this->buildInaccessibleEmbargoesCondition(), 'NOT IN');
-        }
-        elseif ($type === 'media') {
-          $to_apply->condition("{$alias}.{$key}", $this->buildInaccessibleFileCondition('mid'), 'NOT IN');
-        }
-        elseif ($type === 'file') {
-          $to_apply->condition("{$alias}.{$key}", $this->buildInaccessibleFileCondition('fid'), 'NOT IN');
-        }
-        else {
-          throw new \InvalidArgumentException("Invalid type '$type'.");
-        }
+        $target_aliases[] = "{$alias}.{$key}";
       }
     }
-  }
 
-  /**
-   * Builds the condition for file-typed embargoes that are inaccessible.
-   *
-   * @param string $lut_column
-   *   The particular column of the LUT to return, as file embargoes apply to
-   *   media ('mid') as well as files ('fid').
-   *
-   * @return \Drupal\Core\Database\Query\SelectInterface
-   *   The sub-query to be used that results in all file IDs that cannot be
-   *   accessed.
-   */
-  protected function buildInaccessibleFileCondition(string $lut_column) {
-    $query = $this->database->select('embargo', 'e');
-    $lut_alias = $query->join(LUTGeneratorInterface::TABLE_NAME, 'lut', '%alias.nid = e.embargoed_node');
-    return $query
-      ->fields($lut_alias, [$lut_column])
-      ->condition('lut.nid', $this->buildAccessibleEmbargoesQuery(EmbargoInterface::EMBARGO_TYPE_FILE), 'NOT IN');
+    if (empty($target_aliases)) {
+      return;
+    }
+
+    $existence = $this->database->select('node', 'existence_node');
+    $existence->fields('existence_node', ['nid']);
+
+    if ($type !== 'node') {
+      $lut_column = match($type) {
+        'file' => 'fid',
+        'media' => 'mid',
+      };
+      $existence_lut_alias = $existence->leftJoin(LUTGeneratorInterface::TABLE_NAME, 'lut', '%alias.nid = existence_node.nid');
+      $existence->where(strtr('!field IS NULL OR !field IN (!targets)', [
+        '!field' => "{$existence_lut_alias}.{$lut_column}",
+        '!targets' => implode(', ', $target_aliases),
+      ]));
+    }
+    else {
+      $existence->where(strtr('!field IN (!targets)', [
+        '!field' => 'existence_node.nid',
+        '!targets' => implode(', ', $target_aliases),
+      ]));
+    }
+
+    $exist_or = $existence->orConditionGroup();
+
+    // No embargo.
+    $embargo = $this->database->select('embargo', 'ee');
+    $embargo->fields('ee', ['embargoed_node']);
+    $exist_or->condition("existence_node.nid", $embargo, 'NOT IN');
+
+    // Embargoed (and allowed).
+    $accessible_embargoes = $this->buildAccessibleEmbargoesQuery(match($type) {
+      'file', 'media' => EmbargoInterface::EMBARGO_TYPE_FILE,
+      'node' => EmbargoInterface::EMBARGO_TYPE_NODE,
+    });
+    $exist_or->condition("existence_node.nid", $accessible_embargoes, 'IN');
+
+    $existence->condition($exist_or);
+
+    $query->exists($existence);
   }
 
   /**
@@ -164,7 +172,7 @@ class QueryTagger {
    * @return \Drupal\Core\Database\Query\SelectInterface
    *   A query returning things that should not be inaccessible.
    */
-  protected function buildAccessibleEmbargoesQuery($type) : SelectInterface {
+  protected function buildAccessibleEmbargoesQuery(int $type) : SelectInterface {
     $query = $this->database->select('embargo', 'e')
       ->fields('e', ['embargoed_node']);
 
@@ -195,19 +203,6 @@ class QueryTagger {
     $query->condition($group);
 
     return $query;
-  }
-
-  /**
-   * Builds the condition for embargoes that are inaccessible.
-   *
-   * @return \Drupal\Core\Database\Query\SelectInterface
-   *   The sub-query to be used that results in embargoed_node IDs that
-   *   cannot be accessed.
-   */
-  protected function buildInaccessibleEmbargoesCondition() : SelectInterface {
-    return $this->database->select('embargo', 'ein')
-      ->condition('ein.embargoed_node', $this->buildAccessibleEmbargoesQuery(EmbargoInterface::EMBARGO_TYPE_NODE), 'NOT IN')
-      ->fields('ein', ['embargoed_node']);
   }
 
 }
