@@ -147,14 +147,16 @@ class QueryTagger {
     // No embargo.
     $embargo = $this->database->select('embargo', 'ee');
     $embargo->fields('ee', ['embargoed_node']);
-    $exist_or->condition("existence_node.nid", $embargo, 'NOT IN');
+    $embargo->where('existence_node.nid = ee.embargoed_node');
+    $exist_or->notExists($embargo);
 
     // Embargoed (and allowed).
     $accessible_embargoes = $this->buildAccessibleEmbargoesQuery(match($type) {
       'file', 'media' => EmbargoInterface::EMBARGO_TYPE_FILE,
       'node' => EmbargoInterface::EMBARGO_TYPE_NODE,
     });
-    $exist_or->condition("existence_node.nid", $accessible_embargoes, 'IN');
+    $accessible_embargoes->where('existence_node.nid = e.embargoed_node');
+    $exist_or->exists($accessible_embargoes);
 
     $existence->condition($exist_or);
 
