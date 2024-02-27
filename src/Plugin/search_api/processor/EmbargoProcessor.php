@@ -2,13 +2,18 @@
 
 namespace Drupal\embargo\Plugin\search_api\processor;
 
+use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\embargo\EmbargoInterface;
+use Drupal\embargo\EmbargoStorageInterface;
+use Drupal\embargo\Plugin\search_api\processor\Property\EmbargoInfoProperty;
+use Drupal\file\FileInterface;
+use Drupal\islandora\IslandoraUtils;
+use Drupal\media\MediaInterface;
+use Drupal\node\NodeInterface;
 use Drupal\search_api\Datasource\DatasourceInterface;
 use Drupal\search_api\Item\ItemInterface;
-use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\search_api\Processor\ProcessorPluginBase;
-use Drupal\search_api\Plugin\search_api\processor\Property\CustomValueProperty;
-use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\user\UserInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -26,107 +31,129 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * )
  */
 class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPluginInterface {
-  /**
-   * The entity type manager.
-   *
-   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
-   */
-  protected $entityTypeManager;
 
   /**
    * Embargo entity storage.
    *
    * @var \Drupal\embargo\EmbargoStorageInterface
    */
-  protected $storage;
+  protected EmbargoStorageInterface $storage;
 
   /**
-   * Constructs a new instance of the class.
+   * Islandora utils helper service.
    *
-   * @param array $configuration
-   *   A configuration array containing information about the plugin instance.
-   * @param string $plugin_id
-   *   The plugin_id for the plugin instance.
-   * @param mixed $plugin_definition
-   *   The plugin implementation definition.
-   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
-   *   The Entity Type Manager.
+   * XXX: Ideally, this would reference an interface; however, such does not
+   * exist.
    *
-   * @throws \Drupal\facets\Exception\InvalidProcessorException
+   * @var \Drupal\islandora\IslandoraUtils
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager) {
-    parent::__construct($configuration, $plugin_id, $plugin_definition);
-    $this->entityTypeManager = $entity_type_manager;
-    $this->storage = $entity_type_manager->getStorage('embargo');
-  }
+  protected IslandoraUtils $islandoraUtils;
 
   /**
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
-    return new static(
-      $configuration,
-      $plugin_id,
-      $plugin_definition,
-      $container->get('entity_type.manager')
-    );
+    $instance = new static($configuration, $plugin_id, $plugin_definition);
+
+    $instance->storage = $container->get('entity_type.manager')->get('embargo');
+    $instance->islandoraUtils = $container->get('islandora.utils');
+
+    return $instance;
   }
 
   /**
    * {@inheritdoc}
    */
-  public function getPropertyDefinitions(DatasourceInterface $datasource = NULL) {
-    $properties = [];
-
-    if ($datasource) {
-      $definition = [
-        'label' => $this->t('Embargo Status'),
-        'description' => $this->t('Field to pass embargo status to solr index.'),
-        'type' => 'string',
-        'processor_id' => $this->getPluginId(),
-        'is_list' => TRUE,
-      ];
-      $properties['embargo_status'] = new CustomValueProperty($definition);
+  public function getPropertyDefinitions(DatasourceInterface $datasource = NULL) : array {
+    if (!$datasource || !in_array($datasource->getEntityTypeId(), ['file', 'media', 'node'])) {
+      return [];
     }
 
-    return $properties;
+    return [
+      'embargo_info' => new EmbargoInfoProperty([
+        'label' => $this->t('Embargo info'),
+        'description' => $this->t('Aggregated embargo info'),
+        'processor_id' => $this->getPluginId(),
+        'is_list' => FALSE,
+        'computed' => FALSE,
+      ]),
+    ];
+  }
+
+  protected function getNodes(ItemInterface $item) : iterable {
+    $original = $item->getOriginalObject();
+
+    if ($original instanceof NodeInterface) {
+      yield $original;
+    }
+    elseif ($original instanceof MediaInterface) {
+      yield $this->islandoraUtils->getParentNode($original);
+    }
+    elseif ($original instanceof FileInterface) {
+      foreach ($this->islandoraUtils->getReferencingMedia($original->id()) as $media) {
+        yield $this->islandoraUtils->getParentNode($media);
+      }
+    }
+  }
+
+  protected function getEmbargoes(ItemInterface $item) : iterable {
+    foreach ($this->getNodes($item) as $node) {
+      foreach ($this->storage->getApplicableEmbargoes($node) as $embargo) {
+        yield $embargo;
+      }
+    }
   }
 
   /**
    * {@inheritdoc}
    */
   public function addFieldValues(ItemInterface $item) {
-    $embargo_expiration_type = $embargo_type = [];
+    $info = [
+      'total_count' => 0,
+      'indefinite_count' => 0,
+      'scheduled_timestamps' => [],
+      'exempt_users' => [],
+      'exempt_ip_ranges' => [],
+    ];
 
-    // Get node ID.
-    $item_id = $item->getId();
-    $nodeId = preg_replace('/^entity:node\/(\d+):en$/', '$1', $item_id);
-
-    // Load node based on ID, and get embargo.
-    $node = $this->entityTypeManager->getStorage('node')->load($nodeId);
-    $storages = $this->storage->getApplicableEmbargoes($node);
-
-    if (empty($storages)) {
+    $source_type_id = $item->getDatasource()->getEntityTypeId();
+    if (!in_array($source_type_id, ['file', 'media', 'node'])) {
       return;
     }
 
     // Get Embargo details and prepare to pass it to index field.
-    foreach ($storages as $embargo) {
-      $allowed_expiration_types = EmbargoInterface::EXPIRATION_TYPES;
-      $allowed_embargo_type = EmbargoInterface::EMBARGO_TYPES;
-      // Get Embargo Type.
-      $embargo_type[] = 'embargo-type-' . $allowed_embargo_type[$embargo->getEmbargoType()];
+    foreach ($this->getEmbargoes($item) as $embargo) {
+      if ($embargo->getEmbargoType() === EmbargoInterface::EMBARGO_TYPE_FILE && $source_type_id === 'node') {
+        continue;
+      }
 
-      // Get Expiration Type.
-      $embargo_expiration_type[] = 'embargo-expiration-type-' . $allowed_expiration_types[$embargo->getExpirationType()];
+      $info['total_count']++;
+      if ($embargo->getExpirationType() === EmbargoInterface::EXPIRATION_TYPE_INDEFINITE) {
+        $info['indefinite_count']++;
+      }
+      else {
+        $info['scheduled_timestamps'][] = $embargo->getExpirationDate()->getTimestamp();
+      }
+
+      $info['exempt_users'] = array_merge(
+        $info['exempt_users'],
+        array_map(function (UserInterface $user) {
+          return $user->id();
+        }, $embargo->getExemptUsers()),
+      );
+      if ($range_id = $embargo->getExemptIps()?->id()) {
+        $info['exempt_ip_ranges'][] = $range_id;
+      }
     }
 
-    $embargo_status = $combinedString = implode(' ', $embargo_type) . ' ' . implode(' ', $embargo_expiration_type);
+    foreach (['scheduled_timestamps', 'exempt_users', 'exempt_ip_ranges'] as $key) {
+      $info[$key] = array_unique($info[$key]);
+    }
 
     $fields = $this->getFieldsHelper()
-      ->filterForPropertyPath($item->getFields(), $item->getDatasourceId(), 'embargo_status');
+      ->filterForPropertyPath($item->getFields(), $item->getDatasourceId(), 'embargo_info');
     foreach ($fields as $field) {
-      $field->addValue($embargo_status);
+      $field->addValue($info);
     }
   }
 
