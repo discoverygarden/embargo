@@ -2,9 +2,10 @@
 
 namespace Drupal\embargo\Plugin\search_api\processor;
 
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\embargo\EmbargoInterface;
-use Drupal\embargo\EmbargoStorageInterface;
 use Drupal\embargo\Plugin\search_api\processor\Property\EmbargoInfoProperty;
 use Drupal\file\FileInterface;
 use Drupal\islandora\IslandoraUtils;
@@ -13,8 +14,10 @@ use Drupal\node\NodeInterface;
 use Drupal\search_api\Datasource\DatasourceInterface;
 use Drupal\search_api\Item\ItemInterface;
 use Drupal\search_api\Processor\ProcessorPluginBase;
+use Drupal\search_api\Query\QueryInterface;
 use Drupal\user\UserInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * A search_api_solr processor to add embargo related info.
@@ -25,6 +28,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   description = @Translation("Processor to add information to the index related to Embargo."),
  *   stages = {
  *     "add_properties" = 0,
+ *     "preprocess_query" = 10,
  *   },
  *   locked = false,
  *   hidden = false,
@@ -32,12 +36,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  */
 class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPluginInterface {
 
+  const ENTITY_TYPES = ['file', 'media', 'node'];
+
   /**
-   * Embargo entity storage.
+   * The entity type manager service.
    *
-   * @var \Drupal\embargo\EmbargoStorageInterface
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
-  protected EmbargoStorageInterface $storage;
+  protected EntityTypeManagerInterface $entityTypeManager;
 
   /**
    * Islandora utils helper service.
@@ -49,14 +55,20 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
    */
   protected IslandoraUtils $islandoraUtils;
 
+  protected RequestStack $requestStack;
+
+  protected AccountProxyInterface $currentUser;
+
   /**
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
     $instance = new static($configuration, $plugin_id, $plugin_definition);
 
-    $instance->storage = $container->get('entity_type.manager')->get('embargo');
+    $instance->requestStack = $container->get('request_stack');
+    $instance->entityTypeManager = $container->get('entity_type.manager');
     $instance->islandoraUtils = $container->get('islandora.utils');
+    $instance->currentUser = $container->get('current_user');
 
     return $instance;
   }
@@ -65,7 +77,7 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
    * {@inheritdoc}
    */
   public function getPropertyDefinitions(DatasourceInterface $datasource = NULL) : array {
-    if (!$datasource || !in_array($datasource->getEntityTypeId(), ['file', 'media', 'node'])) {
+    if (!$datasource || !in_array($datasource->getEntityTypeId(), static::ENTITY_TYPES)) {
       return [];
     }
 
@@ -80,6 +92,20 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
     ];
   }
 
+  /**
+   * Get the node(s) associated with the given index item.
+   *
+   * @param \Drupal\search_api\Item\ItemInterface $item
+   *   The index item to consider.
+   *
+   * @return iterable
+   *   A generated sequence of nodes.
+   *
+   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+   * @throws \Drupal\Core\TypedData\Exception\MissingDataException
+   * @throws \Drupal\search_api\SearchApiException
+   */
   protected function getNodes(ItemInterface $item) : iterable {
     $original = $item->getOriginalObject();
 
@@ -96,9 +122,23 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
     }
   }
 
+  /**
+   * Get the embargo(es) associated with the given index item.
+   *
+   * @param \Drupal\search_api\Item\ItemInterface $item
+   *   The index item to consider.
+   *
+   * @return iterable
+   *   A generated sequence of applicable embargoes.
+   *
+   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+   * @throws \Drupal\Core\TypedData\Exception\MissingDataException
+   * @throws \Drupal\search_api\SearchApiException
+   */
   protected function getEmbargoes(ItemInterface $item) : iterable {
     foreach ($this->getNodes($item) as $node) {
-      foreach ($this->storage->getApplicableEmbargoes($node) as $embargo) {
+      foreach ($this->entityTypeManager->getStorage('embargo')->getApplicableEmbargoes($node) as $embargo) {
         yield $embargo;
       }
     }
@@ -117,7 +157,7 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
     ];
 
     $source_type_id = $item->getDatasource()->getEntityTypeId();
-    if (!in_array($source_type_id, ['file', 'media', 'node'])) {
+    if (!in_array($source_type_id, static::ENTITY_TYPES)) {
       return;
     }
 
@@ -149,12 +189,59 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
     foreach (['scheduled_timestamps', 'exempt_users', 'exempt_ip_ranges'] as $key) {
       $info[$key] = array_unique($info[$key]);
     }
+//
+//    $fields = $this->getFieldsHelper()
+//      ->filterForPropertyPath($item->getFields(), $item->getDatasourceId(), 'embargo_info');
+//    foreach ($fields as $field) {
+//      $field->addValue($info);
+//    }
+    $this->ensureField($item->getDatasourceId(), 'embargo_info')->addValue($info);
+  }
 
-    $fields = $this->getFieldsHelper()
-      ->filterForPropertyPath($item->getFields(), $item->getDatasourceId(), 'embargo_info');
-    foreach ($fields as $field) {
-      $field->addValue($info);
+  /**
+   * {@inheritDoc}
+   */
+  public function preprocessSearchQuery(QueryInterface $query) : void {
+    $datasources = $query->getIndex()->getDatasources();
+    /** @var \Drupal\search_api\Datasource\DatasourceInterface[] $applicable_datasources */
+    $applicable_datasources = array_filter($datasources, function (DatasourceInterface $datasource) {
+      return in_array($datasource->getEntityTypeId(), static::ENTITY_TYPES);
+    });
+    if (empty($applicable_datasources)) {
+      return;
     }
+
+    foreach ($applicable_datasources as $datasource) {
+      //$datasource->get
+    }
+
+    $fields = $query->getIndex()->getFields();
+    $or_group = $query->createConditionGroup('OR');
+
+    // No embargo.
+    $or_group->addCondition('embargo_info:total_count', 0);
+
+    // Embargo durations.
+    // No indefinite embargo.
+    $or_group->addCondition('embargo_info:indefinite_count', 0);
+    // No scheduled embargo in the future.
+    // XXX: Might not quite work? If there's a single scheduled embargo lesser, would it open it?
+    $or_group->addCondition('embargo_info:scheduled_timestamps', [
+      0 => time() + 1,
+      1 => PHP_INT_MAX,
+    ], 'NOT BETWEEN');
+
+    if (!$this->currentUser->isAnonymous()) {
+      $or_group->addCondition('embargo_info:exempt_users', $this->currentUser->id());
+    }
+
+    /** @var \Drupal\embargo\IpRangeStorageInterface $ip_range_storage */
+    $ip_range_storage = $this->entityTypeManager->getStorage('embargo_ip_range');
+    foreach ($ip_range_storage->getApplicableIpRanges($this->requestStack->getCurrentRequest()->getClientIp()) as $ipRange) {
+      //$or_group->addCondition('embargo_info:exempt_ip_ranges');
+    }
+
+    $query->addConditionGroup($or_group);
   }
 
 }

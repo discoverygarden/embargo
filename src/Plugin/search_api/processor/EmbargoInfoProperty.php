@@ -17,7 +17,7 @@ class EmbargoInfoProperty extends ComplexDataDefinitionBase implements Processor
   /**
    * {@inheritDoc}
    */
-  public function getPropertyDefinitions() {
+  public function getPropertyDefinitions() : array {
     if (!isset($this->propertyDefinitions)) {
       $this->propertyDefinitions = [
         'total_count' => new ProcessorProperty([
@@ -76,14 +76,14 @@ class EmbargoInfoProperty extends ComplexDataDefinitionBase implements Processor
   /**
    * {@inheritDoc}
    */
-  public function isHidden() {
+  public function isHidden() : bool {
     return !empty($this->definition['hidden']);
   }
 
   /**
    * {@inheritdoc}
    */
-  public function isList() {
+  public function isList() : bool {
     return (bool) ($this->definition['is_list'] ?? parent::isList());
   }
 
