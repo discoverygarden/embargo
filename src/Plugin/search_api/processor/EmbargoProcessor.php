@@ -209,7 +209,7 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
 
     $datasources = $query->getIndex()->getDatasources();
     /** @var \Drupal\search_api\Datasource\DatasourceInterface[] $applicable_datasources */
-    $applicable_datasources = array_filter($datasources, function(DatasourceInterface $datasource) {
+    $applicable_datasources = array_filter($datasources, function (DatasourceInterface $datasource) {
       return in_array($datasource->getEntityTypeId(), static::ENTITY_TYPES);
     });
     if (empty($applicable_datasources)) {
@@ -235,7 +235,8 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
       $scheduled_group->addCondition($indefinite_field->getFieldIdentifier(), 0);
 
       // No scheduled embargo in the future.
-      // XXX: Might not quite work? If there's a single scheduled embargo lesser, would it open it?
+      // XXX: Might not quite work? If there's a single scheduled embargo
+      // lesser, would it open it?
       if ($scheduled_field = $this->findField(NULL, 'embargo_info:scheduled_timestamps')) {
         $scheduled_group->addCondition($scheduled_field->getFieldIdentifier(), [
           0 => time() + 1,
