@@ -5,30 +5,30 @@ namespace Drupal\embargo\Plugin\search_api\processor;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountProxyInterface;
+use Drupal\Core\TypedData\ComplexDataDefinitionInterface;
 use Drupal\embargo\EmbargoInterface;
 use Drupal\embargo\Plugin\search_api\processor\Property\EmbargoInfoProperty;
-use Drupal\file\FileInterface;
 use Drupal\islandora\IslandoraUtils;
-use Drupal\media\MediaInterface;
-use Drupal\node\NodeInterface;
 use Drupal\search_api\Datasource\DatasourceInterface;
 use Drupal\search_api\Item\ItemInterface;
 use Drupal\search_api\Processor\ProcessorPluginBase;
 use Drupal\search_api\Query\QueryInterface;
+use Drupal\search_api\SearchApiException;
 use Drupal\user\UserInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
- * A search_api_solr processor to add embargo related info.
+ * A search_api processor to add embargo related info.
  *
  * @SearchApiProcessor(
  *   id = "embargo_processor",
- *   label = @Translation("Embargo Processor"),
- *   description = @Translation("Processor to add information to the index related to Embargo."),
+ *   label = @Translation("Embargo access"),
+ *   description = @Translation("Add information regarding embargo access constraints."),
  *   stages = {
- *     "add_properties" = 0,
- *     "preprocess_query" = 10,
+ *     "add_properties" = 20,
+ *     "pre_index_save" = 20,
+ *     "preprocess_query" = 20,
  *   },
  *   locked = false,
  *   hidden = false,
@@ -55,8 +55,18 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
    */
   protected IslandoraUtils $islandoraUtils;
 
+  /**
+   * The request stack.
+   *
+   * @var \Symfony\Component\HttpFoundation\RequestStack
+   */
   protected RequestStack $requestStack;
 
+  /**
+   * The currently logged-in user.
+   *
+   * @var \Drupal\Core\Session\AccountProxyInterface
+   */
   protected AccountProxyInterface $currentUser;
 
   /**
@@ -77,7 +87,7 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
    * {@inheritdoc}
    */
   public function getPropertyDefinitions(DatasourceInterface $datasource = NULL) : array {
-    if (!$datasource || !in_array($datasource->getEntityTypeId(), static::ENTITY_TYPES)) {
+    if ($datasource !== NULL) {
       return [];
     }
 
@@ -86,40 +96,10 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
         'label' => $this->t('Embargo info'),
         'description' => $this->t('Aggregated embargo info'),
         'processor_id' => $this->getPluginId(),
-        'is_list' => FALSE,
-        'computed' => FALSE,
+        'is_list' => TRUE,
+        'computed' => TRUE,
       ]),
     ];
-  }
-
-  /**
-   * Get the node(s) associated with the given index item.
-   *
-   * @param \Drupal\search_api\Item\ItemInterface $item
-   *   The index item to consider.
-   *
-   * @return iterable
-   *   A generated sequence of nodes.
-   *
-   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
-   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
-   * @throws \Drupal\Core\TypedData\Exception\MissingDataException
-   * @throws \Drupal\search_api\SearchApiException
-   */
-  protected function getNodes(ItemInterface $item) : iterable {
-    $original = $item->getOriginalObject();
-
-    if ($original instanceof NodeInterface) {
-      yield $original;
-    }
-    elseif ($original instanceof MediaInterface) {
-      yield $this->islandoraUtils->getParentNode($original);
-    }
-    elseif ($original instanceof FileInterface) {
-      foreach ($this->islandoraUtils->getReferencingMedia($original->id()) as $media) {
-        yield $this->islandoraUtils->getParentNode($media);
-      }
-    }
   }
 
   /**
@@ -137,9 +117,28 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
    * @throws \Drupal\search_api\SearchApiException
    */
   protected function getEmbargoes(ItemInterface $item) : iterable {
-    foreach ($this->getNodes($item) as $node) {
-      foreach ($this->entityTypeManager->getStorage('embargo')->getApplicableEmbargoes($node) as $embargo) {
+    try {
+      foreach ($this->entityTypeManager->getStorage('embargo')
+        ->getApplicableEmbargoes($item->getOriginalObject()->getValue()) as $embargo) {
         yield $embargo;
+      }
+    }
+    catch (SearchApiException) {
+      // No-op; object probably did not exist?
+    }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  public function preIndexSave() {
+    parent::preIndexSave();
+
+    foreach ($this->getPropertyDefinitions() as $base => $def) {
+      if ($def instanceof ComplexDataDefinitionInterface) {
+        foreach (array_keys($def->getPropertyDefinitions()) as $name) {
+          $this->ensureField(NULL, "{$base}:{$name}");
+        }
       }
     }
   }
@@ -147,7 +146,12 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
   /**
    * {@inheritdoc}
    */
-  public function addFieldValues(ItemInterface $item) {
+  public function addFieldValues(ItemInterface $item) : void {
+    $source_type_id = $item->getDatasource()->getEntityTypeId();
+    if (!in_array($source_type_id, static::ENTITY_TYPES)) {
+      return;
+    }
+
     $info = [
       'total_count' => 0,
       'indefinite_count' => 0,
@@ -155,11 +159,6 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
       'exempt_users' => [],
       'exempt_ip_ranges' => [],
     ];
-
-    $source_type_id = $item->getDatasource()->getEntityTypeId();
-    if (!in_array($source_type_id, static::ENTITY_TYPES)) {
-      return;
-    }
 
     // Get Embargo details and prepare to pass it to index field.
     foreach ($this->getEmbargoes($item) as $embargo) {
@@ -189,59 +188,79 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
     foreach (['scheduled_timestamps', 'exempt_users', 'exempt_ip_ranges'] as $key) {
       $info[$key] = array_unique($info[$key]);
     }
-//
-//    $fields = $this->getFieldsHelper()
-//      ->filterForPropertyPath($item->getFields(), $item->getDatasourceId(), 'embargo_info');
-//    foreach ($fields as $field) {
-//      $field->addValue($info);
-//    }
-    $this->ensureField($item->getDatasourceId(), 'embargo_info')->addValue($info);
+
+    foreach ($info as $key => $val) {
+      if ($field = $this->findField(NULL, "embargo_info:{$key}")) {
+        $item_field = $item->getField($field->getFieldIdentifier(), FALSE);
+        foreach ((is_array($val) ? $val : [$val]) as $value) {
+          $item_field->addValue($value);
+        }
+      }
+    }
   }
 
   /**
    * {@inheritDoc}
    */
   public function preprocessSearchQuery(QueryInterface $query) : void {
+    if ($this->currentUser->hasPermission('bypass embargo access')) {
+      return;
+    }
+
     $datasources = $query->getIndex()->getDatasources();
     /** @var \Drupal\search_api\Datasource\DatasourceInterface[] $applicable_datasources */
-    $applicable_datasources = array_filter($datasources, function (DatasourceInterface $datasource) {
+    $applicable_datasources = array_filter($datasources, function(DatasourceInterface $datasource) {
       return in_array($datasource->getEntityTypeId(), static::ENTITY_TYPES);
     });
     if (empty($applicable_datasources)) {
       return;
     }
 
-    foreach ($applicable_datasources as $datasource) {
-      //$datasource->get
-    }
-
-    $fields = $query->getIndex()->getFields();
-    $or_group = $query->createConditionGroup('OR');
+    $or_group = $query->createConditionGroup('OR', [
+      'embargo_processor',
+      'embargo_access',
+    ]);
 
     // No embargo.
-    $or_group->addCondition('embargo_info:total_count', 0);
+    if ($field = $this->findField(NULL, 'embargo_info:total_count')) {
+      $or_group->addCondition($field->getFieldIdentifier(), 0);
+    }
 
     // Embargo durations.
     // No indefinite embargo.
-    $or_group->addCondition('embargo_info:indefinite_count', 0);
-    // No scheduled embargo in the future.
-    // XXX: Might not quite work? If there's a single scheduled embargo lesser, would it open it?
-    $or_group->addCondition('embargo_info:scheduled_timestamps', [
-      0 => time() + 1,
-      1 => PHP_INT_MAX,
-    ], 'NOT BETWEEN');
+    if ($indefinite_field = $this->findField(NULL, 'embargo_info:indefinite_count')) {
+      $scheduled_group = $query->createConditionGroup(tags: [
+        'embargo_scheduled',
+      ]);
+      $scheduled_group->addCondition($indefinite_field->getFieldIdentifier(), 0);
 
-    if (!$this->currentUser->isAnonymous()) {
-      $or_group->addCondition('embargo_info:exempt_users', $this->currentUser->id());
+      // No scheduled embargo in the future.
+      // XXX: Might not quite work? If there's a single scheduled embargo lesser, would it open it?
+      if ($scheduled_field = $this->findField(NULL, 'embargo_info:scheduled_timestamps')) {
+        $scheduled_group->addCondition($scheduled_field->getFieldIdentifier(), [
+          0 => time() + 1,
+          1 => PHP_INT_MAX,
+        ], 'NOT BETWEEN');
+      }
+      $or_group->addConditionGroup($scheduled_group);
     }
 
-    /** @var \Drupal\embargo\IpRangeStorageInterface $ip_range_storage */
-    $ip_range_storage = $this->entityTypeManager->getStorage('embargo_ip_range');
-    foreach ($ip_range_storage->getApplicableIpRanges($this->requestStack->getCurrentRequest()->getClientIp()) as $ipRange) {
-      //$or_group->addCondition('embargo_info:exempt_ip_ranges');
+    if (!$this->currentUser->isAnonymous() && ($field = $this->findField(NULL, 'embargo_info:exempt_users'))) {
+      $or_group->addCondition($field->getFieldIdentifier(), $this->currentUser->id());
     }
 
-    $query->addConditionGroup($or_group);
+    if ($field = $this->findField(NULL, 'embargo_info:exempt_ip_ranges')) {
+      /** @var \Drupal\embargo\IpRangeStorageInterface $ip_range_storage */
+      $ip_range_storage = $this->entityTypeManager->getStorage('embargo_ip_range');
+      foreach ($ip_range_storage->getApplicableIpRanges($this->requestStack->getCurrentRequest()
+        ->getClientIp()) as $ipRange) {
+        $or_group->addCondition($field->getFieldIdentifier(), $ipRange->id());
+      }
+    }
+
+    if (count($or_group->getConditions()) > 0) {
+      $query->addConditionGroup($or_group);
+    }
   }
 
 }
