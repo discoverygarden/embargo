@@ -249,4 +249,22 @@ interface EmbargoInterface extends ContentEntityInterface {
    */
   public function ipIsExempt(string $ip): bool;
 
+  /**
+   * Gets the embargoed files.
+   *
+   * @return \Drupal\media\MediaInterface[]
+   *   An array of media entities representing the embargoed files.
+   */
+  public function getEmbargoedFiles(): array;
+
+  /**
+   * Sets the embargoed files.
+   *
+   * @param \Drupal\media\MediaInterface[] $files
+   *   An array of media entities representing the embargoed files.
+   *
+   * @return $this
+   */
+  public function setEmbargoedFiles(array $files): EmbargoInterface;
+
 }

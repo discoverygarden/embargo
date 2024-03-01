@@ -9,6 +9,8 @@ use Drupal\Core\Database\Query\AlterableInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\embargo\EmbargoStorage;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\node\NodeInterface;
 
 /**
  * Implements hook_entity_type_alter().
@@ -96,4 +98,70 @@ function embargo_theme($existing, $type, $theme, $path) {
       ],
     ],
   ];
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function embargo_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  if ($form_id == 'embargo_add_form' || $form_id == 'embargo_edit_form') {
+    // Set up visibility conditions for the embargoed_file field.
+    $form['embargoed_file']['#states'] = [
+      'visible' => [
+        ':input[name="embargo_type"]' => ['value' => 0],
+      ],
+    ];
+
+    // Check if the URL contains a node ID.
+    $node_id = \Drupal::routeMatch()->getParameter('node');
+
+    if ($node_id instanceof NodeInterface) {
+      $node_id = $node_id->id();
+    }
+
+    // If its edit form, need to select node id differently.
+    if ($form_id == 'embargo_edit_form') {
+      $entity = $form_state->getFormObject()->getEntity();
+      $field_value = $entity->embargoed_node->getValue();
+      $node_id = $field_value[0]['target_id'];
+    }
+
+    // If a node ID is present, filter the options of embargoed_file.
+    if (!empty($node_id)) {
+      $options = embargo_get_filtered_file_options($node_id);
+      $form['embargoed_file']['widget']['#options'] = $options;
+    }
+    else {
+      // @todo Need to update file list via ajax when Embargoed Node available.
+      unset($form['embargoed_file']);
+    }
+
+    // JS to add Select/Unselect All link and functionality.
+    $form['#attached']['library'][] = 'embargo/custom_select_all_library';
+
+  }
+}
+
+/**
+ * Helper function to get filtered options based on the node ID.
+ */
+function embargo_get_filtered_file_options($node_id) {
+  // Initialize an empty array to store matching media entities.
+  $matching_media = [];
+
+  // Check if the node ID is valid.
+  if (!empty($node_id)) {
+    // Filter media entities based on the referenced node ID.
+    $matching_media = \Drupal::entityTypeManager()
+      ->getStorage('media')
+      ->loadByProperties(['field_media_of' => $node_id]);
+  }
+
+  // Build an array of matching media labels and IDs for the checkbox options.
+  $options = [];
+  foreach ($matching_media as $media) {
+    $options[$media->id()] = $media->label();
+  }
+
+  return $options;
 }

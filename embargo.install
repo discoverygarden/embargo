@@ -1,0 +1,39 @@
+<?php
+
+/**
+ * @file
+ * Install file.
+ */
+
+use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Utility\UpdateException;
+
+/**
+ * Add a new field to the existing Embargo entity type.
+ */
+function embargo_update_8001() {
+  $entity_type_id = 'embargo';
+  $bundle = 'embargo';
+
+  $definition_manager = \Drupal::entityDefinitionUpdateManager();
+
+  try {
+    // Create a new field definition.
+    $new_field = BaseFieldDefinition::create('entity_reference')
+      ->setLabel(t('Embargoed File'))
+      ->setDescription(t('New field for attaching media to the Embargo node.'))
+      ->setSetting('target_type', 'media')
+      ->setCardinality(BaseFieldDefinition::CARDINALITY_UNLIMITED);
+
+    // Install the new definition.
+    $definition_manager->installFieldStorageDefinition('embargoed_file', $entity_type_id, $bundle, $new_field);
+  }
+  catch (UpdateException $e) {
+    // Handle exception if needed.
+    \Drupal::logger('embargo')->error('Error adding field: @error', ['@error' => $e->getMessage()]);
+    return t('Update failed: @error', ['@error' => $e->getMessage()]);
+  }
+
+  // Provide a message indicating the update has been applied.
+  return t('Added embargoed_file to the Embargo entity.');
+}
