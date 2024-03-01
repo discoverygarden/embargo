@@ -7,7 +7,12 @@
 
 use Drupal\Core\Database\Query\AlterableInterface;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\embargo\EmbargoInterface;
+use Drupal\embargo\EmbargoItemList;
 use Drupal\embargo\EmbargoStorage;
 
 /**
@@ -96,4 +101,33 @@ function embargo_theme($existing, $type, $theme, $path) {
       ],
     ],
   ];
+}
+
+/**
+ * Implements hook_entity_base_field_info().
+ */
+function embargo_entity_base_field_info(EntityTypeInterface $entity_type) {
+  if (!in_array($entity_type->id(), ['file', 'media', 'node'])) {
+    return [];
+  }
+
+  $fields = [];
+
+  $fields['embargo'] = BaseFieldDefinition::create('entity_reference')
+    ->setLabel(t('Embargoes'))
+    ->setDescription(t('Embargoes affecting this item.'))
+    ->setTranslatable(FALSE)
+    ->setRevisionable(FALSE)
+    ->setRequired(FALSE)
+    ->setDisplayConfigurable('view', FALSE)
+    ->setCardinality(FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED)
+    ->setComputed(TRUE)
+    ->setClass(EmbargoItemList::class)
+    ->setSetting('target_type', 'embargo')
+    ->setSetting('embargo_types', match($entity_type->id()) {
+      'file', 'media' => [EmbargoInterface::EMBARGO_TYPE_NODE, EmbargoInterface::EMBARGO_TYPE_FILE],
+      'node' => [EmbargoInterface::EMBARGO_TYPE_NODE],
+    });
+
+  return $fields;
 }
