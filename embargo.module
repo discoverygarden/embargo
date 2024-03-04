@@ -196,7 +196,7 @@ function _embargo_search_api_track(EntityInterface $entity) : void {
     ->fields('lut', ['mid', 'fid'])
     ->condition('nid', $node->id())
     ->execute();
-  $media_ids = array_unique($results->fetchCol(0));
+  $media_ids = array_unique($results->fetchCol(/* 0 */));
   $file_ids = array_unique($results->fetchCol(1));
 
   $entity_type_manager = \Drupal::entityTypeManager();
