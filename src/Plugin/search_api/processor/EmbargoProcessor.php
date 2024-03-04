@@ -113,7 +113,10 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
       return;
     }
 
-    $and_group = $query->createAndAddConditionGroup(tags: ['embargo_processor', 'embargo_access']);
+    $and_group = $query->createAndAddConditionGroup(tags: [
+      'embargo_processor',
+      'embargo_access',
+    ]);
     foreach (array_keys($applicable_datasources) as $datasource_id) {
       if ($filter = $this->addEmbargoFilters($datasource_id, $query)) {
         $and_group->addConditionGroup($filter);

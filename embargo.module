@@ -125,7 +125,10 @@ function embargo_entity_base_field_info(EntityTypeInterface $entity_type) {
     ->setClass(EmbargoItemList::class)
     ->setSetting('target_type', 'embargo')
     ->setSetting('embargo_types', match($entity_type->id()) {
-      'file', 'media' => [EmbargoInterface::EMBARGO_TYPE_NODE, EmbargoInterface::EMBARGO_TYPE_FILE],
+      'file', 'media' => [
+        EmbargoInterface::EMBARGO_TYPE_NODE,
+        EmbargoInterface::EMBARGO_TYPE_FILE,
+      ],
       'node' => [EmbargoInterface::EMBARGO_TYPE_NODE],
     });
 
