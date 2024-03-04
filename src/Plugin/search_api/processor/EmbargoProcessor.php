@@ -148,6 +148,7 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
       if ($scheduled_field = $this->findField($datasource_id, 'embargo:entity:expiration_date')) {
         $schedule_group = $query->createConditionGroup(tags: ['embargo_scheduled']);
 
+        $schedule_group->addCondition($expiration_type_field->getFieldIdentifier(), EmbargoInterface::EXPIRATION_TYPE_INDEFINITE, '<>');
         $schedule_group->addCondition($expiration_type_field->getFieldIdentifier(), EmbargoInterface::EXPIRATION_TYPE_SCHEDULED);
         // Embargo in the past.
         $schedule_group->addCondition($scheduled_field->getFieldIdentifier(), date('Y-m-d', $this->time->getRequestTime()), '<=');
