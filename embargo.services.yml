@@ -31,7 +31,3 @@ services:
       - '@url_generator'
     tags:
       - { name: 'event_subscriber' }
-  embargo.tracking_event_subscriber:
-    class: Drupal\embargo\EventSubscriber\TrackingEventSubscriber
-    tags:
-      - { name: 'event_subscriber' }
