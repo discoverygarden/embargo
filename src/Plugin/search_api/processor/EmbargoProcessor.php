@@ -184,6 +184,7 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
       foreach ($ip_range_storage->getApplicableIpRanges($this->requestStack->getCurrentRequest()
         ->getClientIp()) as $ipRange) {
         $or_group->addCondition($field->getFieldIdentifier(), $ipRange->id());
+        $query->addCacheableDependency($ipRange);
       }
       $query->addCacheContexts(['ip']);
     }
