@@ -142,16 +142,14 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
       $or_group->addCondition($field->getFieldIdentifier(), NULL);
     }
 
-    // Embargo durations.
-    // No indefinite embargo.
+    // Embargo duration/schedule.
     if ($expiration_type_field = $this->findField($datasource_id, 'embargo:entity:expiration_type')) {
-      $or_group->addCondition($expiration_type_field->getFieldIdentifier(), EmbargoInterface::EXPIRATION_TYPE_INDEFINITE, '<>');
+      $schedule_group = $query->createConditionGroup(tags: ['embargo_schedule']);
+      // No indefinite embargo.
+      $schedule_group->addCondition($expiration_type_field->getFieldIdentifier(), EmbargoInterface::EXPIRATION_TYPE_INDEFINITE, '<>');
 
       // Scheduled embargo in the past and none in the future.
       if ($scheduled_field = $this->findField($datasource_id, 'embargo:entity:expiration_date')) {
-        $schedule_group = $query->createConditionGroup(tags: ['embargo_scheduled']);
-
-        $schedule_group->addCondition($expiration_type_field->getFieldIdentifier(), EmbargoInterface::EXPIRATION_TYPE_INDEFINITE, '<>');
         $schedule_group->addCondition($expiration_type_field->getFieldIdentifier(), EmbargoInterface::EXPIRATION_TYPE_SCHEDULED);
         // Embargo in the past.
         $schedule_group->addCondition($scheduled_field->getFieldIdentifier(), date('Y-m-d', $this->time->getRequestTime()), '<=');
@@ -160,9 +158,9 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
           0 => date('Y-m-d', strtotime('+1 DAY', $this->time->getRequestTime())),
           1 => date('Y-m-d', PHP_INT_MAX),
         ], 'NOT BETWEEN');
-
-        $or_group->addConditionGroup($schedule_group);
       }
+
+      $or_group->addConditionGroup($schedule_group);
     }
 
     if (
