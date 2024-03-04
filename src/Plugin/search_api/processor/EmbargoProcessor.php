@@ -3,6 +3,7 @@
 namespace Drupal\embargo\Plugin\search_api\processor;
 
 use Drupal\Component\Datetime\TimeInterface;
+use Drupal\Core\Cache\RefinableCacheableDependencyInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountProxyInterface;
@@ -100,6 +101,8 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
    * {@inheritDoc}
    */
   public function preprocessSearchQuery(QueryInterface $query) : void {
+    assert($query instanceof RefinableCacheableDependencyInterface);
+    $query->addCacheContexts(['user.permissions']);
     if ($this->currentUser->hasPermission('bypass embargo access')) {
       return;
     }
@@ -133,6 +136,7 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
    *   The query to which to add filters.
    */
   protected function addEmbargoFilters(string $datasource_id, QueryInterface $query) : ?ConditionGroupInterface {
+    assert($query instanceof RefinableCacheableDependencyInterface);
     $or_group = $query->createConditionGroup('OR', [
       "embargo:$datasource_id",
     ]);
@@ -140,6 +144,7 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
     // No embargo.
     if ($field = $this->findField($datasource_id, 'embargo:entity:id')) {
       $or_group->addCondition($field->getFieldIdentifier(), NULL);
+      $query->addCacheTags(['embargo_list']);
     }
 
     // Embargo duration/schedule.
@@ -158,16 +163,19 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
           0 => date('Y-m-d', strtotime('+1 DAY', $this->time->getRequestTime())),
           1 => date('Y-m-d', PHP_INT_MAX),
         ], 'NOT BETWEEN');
+        // Cacheable up to a day.
+        $query->mergeCacheMaxAge(24 * 3600);
       }
 
       $or_group->addConditionGroup($schedule_group);
     }
 
-    if (
-      !$this->currentUser->isAnonymous() &&
-      ($field = $this->findField($datasource_id, 'embargo:entity:exempt_users:entity:uid'))
-    ) {
+    if ($this->currentUser->isAnonymous()) {
+      $query->addCacheContexts(['user.roles:anonymous']);
+    }
+    elseif ($field = $this->findField($datasource_id, 'embargo:entity:exempt_users:entity:uid')) {
       $or_group->addCondition($field->getFieldIdentifier(), $this->currentUser->id());
+      $query->addCacheContexts(['user']);
     }
 
     if ($field = $this->findField($datasource_id, 'embargo:entity:exempt_ips:entity:id')) {
@@ -177,6 +185,7 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
         ->getClientIp()) as $ipRange) {
         $or_group->addCondition($field->getFieldIdentifier(), $ipRange->id());
       }
+      $query->addCacheContexts(['ip']);
     }
 
     return (count($or_group->getConditions()) > 0) ? $or_group : NULL;
