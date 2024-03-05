@@ -26,28 +26,28 @@ class QueryTagger {
    *
    * @var \Drupal\Core\Session\AccountProxyInterface
    */
-  protected $user;
+  protected AccountProxyInterface $user;
 
   /**
    * The IP of the request.
    *
    * @var string
    */
-  protected $currentIp;
+  protected string $currentIp;
 
   /**
    * Instance of a Drupal database connection.
    *
    * @var \Drupal\Core\Database\Connection
    */
-  protected $database;
+  protected Connection $database;
 
   /**
    * The entity type manager.
    *
    * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
-  protected $entityTypeManager;
+  protected EntityTypeManagerInterface $entityTypeManager;
 
   /**
    * Time service.
@@ -106,6 +106,8 @@ class QueryTagger {
 
     $target_aliases = [];
 
+    $tagged_table_aliases = $query->getMetaData('embargo_tagged_table_aliases') ?? [];
+
     foreach ($query->getTables() as $info) {
       if ($info['table'] instanceof SelectInterface) {
         continue;
@@ -113,7 +115,10 @@ class QueryTagger {
       elseif (in_array($info['table'], $tables)) {
         $key = (str_starts_with($info['table'], "{$type}__")) ? 'entity_id' : (substr($type, 0, 1) . "id");
         $alias = $info['alias'];
-        $target_aliases[] = "{$alias}.{$key}";
+        if (!in_array($alias, $tagged_table_aliases)) {
+          $tagged_table_aliases[] = $alias;
+          $target_aliases[] = "{$alias}.{$key}";
+        }
       }
     }
 
@@ -121,15 +126,45 @@ class QueryTagger {
       return;
     }
 
-    $existence = $this->database->select('node', 'existence_node');
-    $existence->fields('existence_node', ['nid']);
+    $query->addMetaData('embargo_tagged_table_aliases', $tagged_table_aliases);
+    $existence = $query->getMetaData('embargo_tagged_existence_query');
+
+    if (!$existence) {
+      $existence = $this->database->select('node', 'existence_node');
+      $existence->fields('existence_node', ['nid']);
+      $existence_lut_alias = $existence->leftJoin(LUTGeneratorInterface::TABLE_NAME, 'lut', '%alias.nid = existence_node.nid');
+      $query->addMetaData('embargo_tagged_existence_query', $existence);
+      $query->addMetaData('embargo_lut_alias', $existence_lut_alias);
+
+      $exist_or = $existence->orConditionGroup();
+
+      // No embargo.
+      $embargo = $this->database->select('embargo', 'ee');
+      $embargo->fields('ee', ['embargoed_node']);
+      $embargo->where('existence_node.nid = ee.embargoed_node');
+      $exist_or->notExists($embargo);
+
+      // Embargoed (and allowed).
+      $accessible_embargoes = $this->buildAccessibleEmbargoesQuery(match($type) {
+        'file', 'media' => EmbargoInterface::EMBARGO_TYPE_FILE,
+        'node' => EmbargoInterface::EMBARGO_TYPE_NODE,
+      });
+      $accessible_embargoes->where('existence_node.nid = e.embargoed_node');
+      $exist_or->exists($accessible_embargoes);
+
+      $existence->condition($exist_or);
+
+      $query->exists($existence);
+    }
+    else {
+      $existence_lut_alias = $query->getMetaData('embargo_lut_alias');
+    }
 
     if ($type !== 'node') {
       $lut_column = match($type) {
         'file' => 'fid',
         'media' => 'mid',
       };
-      $existence_lut_alias = $existence->leftJoin(LUTGeneratorInterface::TABLE_NAME, 'lut', '%alias.nid = existence_node.nid');
       $existence->where(strtr('!field IS NULL OR !field IN (!targets)', [
         '!field' => "{$existence_lut_alias}.{$lut_column}",
         '!targets' => implode(', ', $target_aliases),
@@ -141,26 +176,6 @@ class QueryTagger {
         '!targets' => implode(', ', $target_aliases),
       ]));
     }
-
-    $exist_or = $existence->orConditionGroup();
-
-    // No embargo.
-    $embargo = $this->database->select('embargo', 'ee');
-    $embargo->fields('ee', ['embargoed_node']);
-    $embargo->where('existence_node.nid = ee.embargoed_node');
-    $exist_or->notExists($embargo);
-
-    // Embargoed (and allowed).
-    $accessible_embargoes = $this->buildAccessibleEmbargoesQuery(match($type) {
-      'file', 'media' => EmbargoInterface::EMBARGO_TYPE_FILE,
-      'node' => EmbargoInterface::EMBARGO_TYPE_NODE,
-    });
-    $accessible_embargoes->where('existence_node.nid = e.embargoed_node');
-    $exist_or->exists($accessible_embargoes);
-
-    $existence->condition($exist_or);
-
-    $query->exists($existence);
   }
 
   /**
