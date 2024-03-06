@@ -87,16 +87,16 @@ class QueryTagger {
    *
    * @param \Drupal\Core\Database\Query\SelectInterface $query
    *   The query being executed.
-   * @param string $type
-   *   Either "node" or "file".
    */
-  public function tagAccess(SelectInterface $query, string $type) : void {
-    if (!in_array($type, ['node', 'media', 'file'])) {
-      throw new \InvalidArgumentException("Unrecognized type '$type'.");
-    }
-    elseif ($this->user->hasPermission('bypass embargo access')) {
+  public function tagNode(SelectInterface $query) : void {
+    if ($query->hasTag('islandora_hierarchical_access_subquery')) {
+      // Being run as a subquery, we do not want to add again.
       return;
     }
+    if ($this->user->hasPermission('bypass embargo access')) {
+      return;
+    }
+    $type = 'node';
 
     static::conjunctionQuery($query);
 
@@ -127,54 +127,72 @@ class QueryTagger {
     }
 
     $query->addMetaData('embargo_tagged_table_aliases', $tagged_table_aliases);
-    $existence = $query->getMetaData('embargo_tagged_existence_query');
+    $existence_query = $query->getMetaData('embargo_tagged_existence_query');
 
-    if (!$existence) {
-      $existence = $this->database->select('node', 'existence_node');
-      $existence->fields('existence_node', ['nid']);
-      $existence_lut_alias = $existence->leftJoin(LUTGeneratorInterface::TABLE_NAME, 'lut', '%alias.nid = existence_node.nid');
-      $query->addMetaData('embargo_tagged_existence_query', $existence);
-      $query->addMetaData('embargo_lut_alias', $existence_lut_alias);
+    if (!$existence_query) {
+      $existence_query = $this->database->select('node', 'existence_node');
+      $existence_query->fields('existence_node', ['nid']);
+      $query->addMetaData('embargo_tagged_existence_query', $existence_query);
 
-      $exist_or = $existence->orConditionGroup();
+      $query->exists($existence_query);
+    }
+
+    $existence_query->where(strtr('!field IN (!targets)', [
+      '!field' => 'existence_node.nid',
+      '!targets' => implode(', ', $target_aliases),
+    ]));
+
+    if (!$query->hasTag('embargo_access')) {
+      $query->addTag('embargo_access');
+
+      $embargo_alias = $existence_query->leftJoin('embargo', 'e', '%alias.embargoed_node = existence_node.nid');
+      $user_alias = $existence_query->leftJoin('embargo__exempt_users', 'u', "%alias.entity_id = {$embargo_alias}.id");
+      $existence_or = $existence_query->orConditionGroup();
 
       // No embargo.
-      $embargo = $this->database->select('embargo', 'ee');
-      $embargo->fields('ee', ['embargoed_node']);
-      $embargo->where('existence_node.nid = ee.embargoed_node');
-      $exist_or->notExists($embargo);
+      // XXX: Might have to change to examine one of the fields outside the join
+      // condition?
+      $existence_or->isNull("{$embargo_alias}.embargoed_node");
 
-      // Embargoed (and allowed).
-      $accessible_embargoes = $this->buildAccessibleEmbargoesQuery(match($type) {
-        'file', 'media' => EmbargoInterface::EMBARGO_TYPE_FILE,
-        'node' => EmbargoInterface::EMBARGO_TYPE_NODE,
-      });
-      $accessible_embargoes->where('existence_node.nid = e.embargoed_node');
-      $exist_or->exists($accessible_embargoes);
+      // The user is exempt from the embargo.
+      $existence_or->condition("{$user_alias}.exempt_users_target_id", $this->user->id());
 
-      $existence->condition($exist_or);
+      // ... the incoming IP is in an exempt range; or...
+      /** @var \Drupal\embargo\IpRangeStorageInterface $storage */
+      $storage = $this->entityTypeManager->getStorage('embargo_ip_range');
+      $applicable_ip_ranges = $storage->getApplicableIpRanges($this->currentIp);
+      if (!empty($applicable_ip_ranges)) {
+        $existence_or->condition("{$embargo_alias}.exempt_ips", array_keys($applicable_ip_ranges), 'IN');
+      }
 
-      $query->exists($existence);
-    }
-    else {
-      $existence_lut_alias = $query->getMetaData('embargo_lut_alias');
-    }
+      // With embargo, without exemption.
+      $embargo_and = $existence_or->andConditionGroup();
 
-    if ($type !== 'node') {
-      $lut_column = match($type) {
-        'file' => 'fid',
-        'media' => 'mid',
-      };
-      $existence->where(strtr('!field IS NULL OR !field IN (!targets)', [
-        '!field' => "{$existence_lut_alias}.{$lut_column}",
-        '!targets' => implode(', ', $target_aliases),
-      ]));
-    }
-    else {
-      $existence->where(strtr('!field IN (!targets)', [
-        '!field' => 'existence_node.nid',
-        '!targets' => implode(', ', $target_aliases),
-      ]));
+      // Has an embargo of a relevant type.
+      $embargo_and->condition("{$embargo_alias}.embargo_type", EmbargoInterface::EMBARGO_TYPE_NODE);
+
+      $current_date = $this->dateFormatter->format($this->time->getRequestTime(), 'custom', DateTimeItemInterface::DATE_STORAGE_FORMAT);
+      // No indefinite embargoes or embargoes expiring in the future.
+      $unexpired_embargo_subquery = $this->database->select('embargo', 'ue')
+        ->fields('ue', ['embargoed_node']);
+      $unexpired_embargo_subquery->condition($unexpired_embargo_subquery->orConditionGroup()
+        ->condition('ue.expiration_type', EmbargoInterface::EXPIRATION_TYPE_INDEFINITE)
+        ->condition($unexpired_embargo_subquery->andConditionGroup()
+          ->condition('ue.expiration_type', EmbargoInterface::EXPIRATION_TYPE_SCHEDULED)
+          ->condition('ue.expiration_date', $current_date, '>')
+        )
+      );
+      $embargo_and
+        ->condition(
+          "{$embargo_alias}.embargoed_node",
+          $unexpired_embargo_subquery,
+          'NOT IN',
+        )
+        ->condition("{$embargo_alias}.expiration_type", EmbargoInterface::EXPIRATION_TYPE_SCHEDULED)
+        ->condition("{$embargo_alias}.expiration_date", $current_date, '<=');
+
+      $existence_or->condition($embargo_and);
+      $existence_query->condition($existence_or);
     }
   }
 

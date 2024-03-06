@@ -31,3 +31,10 @@ services:
       - '@url_generator'
     tags:
       - { name: 'event_subscriber' }
+  embargo.event_subscriber.islandora_hierarchical_access:
+    class: Drupal\embargo\EventSubscriber\IslandoraHierarchicalAccessEventSubscriber
+    factory: [null, 'create']
+    arguments:
+      - '@service_container'
+    tags:
+      - { name: 'event_subscriber' }
