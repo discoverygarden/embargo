@@ -3,6 +3,9 @@
 namespace Drupal\Tests\embargo\Kernel;
 
 use Drupal\embargo\EmbargoInterface;
+use Drupal\file\FileInterface;
+use Drupal\media\MediaInterface;
+use Drupal\node\NodeInterface;
 use Drupal\Tests\islandora_test_support\Traits\DatabaseQueryTestTraits;
 
 /**
@@ -21,17 +24,60 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
   protected EmbargoInterface $embargo;
 
   /**
+   * Embargoed node from ::setUp().
+   *
+   * @var \Drupal\node\NodeInterface
+   */
+  protected NodeInterface $embargoedNode;
+
+  /**
+   * Embargoed media from ::setUp().
+   *
+   * @var \Drupal\media\MediaInterface
+   */
+  protected MediaInterface $embargoedMedia;
+
+  /**
+   * Embargoed file from ::setUp().
+   *
+   * @var \Drupal\file\FileInterface
+   */
+  protected FileInterface $embargoedFile;
+
+  /**
+   * Unembargoed node from ::setUp().
+   *
+   * @var \Drupal\node\NodeInterface
+   */
+  protected NodeInterface $unembargoedNode;
+
+  /**
+   * Unembargoed media from ::setUp().
+   *
+   * @var \Drupal\media\MediaInterface
+   */
+  protected MediaInterface $unembargoedMedia;
+
+  /**
+   * Unembargoed file from ::setUp().
+   *
+   * @var \Drupal\file\FileInterface
+   */
+  protected FileInterface $unembargoedFile;
+
+  /**
    * {@inheritdoc}
    */
   public function setUp(): void {
     parent::setUp();
 
     // Create two nodes one embargoed and one non-embargoed.
-    $embargoedNode = $this->createNode();
-    $this->createMedia($this->createFile(), $embargoedNode);
-    $this->embargo = $this->createEmbargo($embargoedNode);
+    $this->embargoedNode = $this->createNode();
+    $this->embargoedMedia = $this->createMedia($this->embargoedFile = $this->createFile(), $this->embargoedNode);
+    $this->embargo = $this->createEmbargo($this->embargoedNode);
 
-    $this->createNode();
+    $this->unembargoedNode = $this->createNode();
+    $this->unembargoedMedia = $this->createMedia($this->unembargoedFile = $this->createFile(), $this->unembargoedNode);
   }
 
   /**
@@ -43,6 +89,7 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
     $query = $this->generateNodeSelectAccessQuery($this->user);
     $result = $query->execute()->fetchAll();
     $this->assertCount(1, $result, 'User can only view non-embargoed node.');
+    $this->assertEquals([$this->unembargoedNode->id()], array_column($result, 'nid'));
   }
 
   /**
@@ -53,7 +100,8 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
   public function testNodeEmbargoReferencedMediaAccessQueryAlterAccessDenied() {
     $query = $this->generateMediaSelectAccessQuery($this->user);
     $result = $query->execute()->fetchAll();
-    $this->assertCount(0, $result, 'Media of embargoed nodes cannot be viewed');
+    $this->assertCount(1, $result, 'Media of embargoed nodes cannot be viewed');
+    $this->assertEquals([$this->unembargoedMedia->id()], array_column($result, 'mid'));
   }
 
   /**
@@ -65,6 +113,7 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
     $query = $this->generateFileSelectAccessQuery($this->user);
     $result = $query->execute()->fetchAll();
     $this->assertCount(1, $result, 'File of embargoed nodes cannot be viewed');
+    $this->assertEquals([$this->unembargoedFile->id()], array_column($result, 'fid'));
   }
 
   /**
@@ -80,6 +129,10 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
 
     $result = $query->execute()->fetchAll();
     $this->assertCount(2, $result, 'Non embargoed nodes can be viewed');
+    $this->assertEqualsCanonicalizing([
+      $this->embargoedNode->id(),
+      $this->unembargoedNode->id(),
+    ], array_column($result, 'nid'));
   }
 
   /**
@@ -93,8 +146,12 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
     $this->embargo->delete();
     $query = $this->generateMediaSelectAccessQuery($this->user);
     $result = $query->execute()->fetchAll();
-    $this->assertCount(1, $result,
+    $this->assertCount(2, $result,
       'Media of non embargoed nodes can be viewed');
+    $this->assertEqualsCanonicalizing([
+      $this->embargoedMedia->id(),
+      $this->unembargoedMedia->id(),
+    ], array_column($result, 'mid'));
   }
 
   /**
@@ -111,6 +168,10 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
     $result = $query->execute()->fetchAll();
     $this->assertCount(2, $result,
       'Files of non embargoed nodes can be viewed');
+    $this->assertEqualsCanonicalizing([
+      $this->embargoedFile->id(),
+      $this->unembargoedFile->id(),
+    ], array_column($result, 'fid'));
   }
 
   /**
@@ -122,9 +183,10 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
     // Create an embargo scheduled to be unpublished in the future.
     $this->setEmbargoFutureUnpublishDate($this->embargo);
 
-    $nodeCount = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
-    $this->assertCount(1, $nodeCount,
+    $result = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
+    $this->assertCount(1, $result,
       'Node is still embargoed.');
+    $this->assertEqualsCanonicalizing([$this->unembargoedNode->id()], array_column($result, 'nid'));
   }
 
   /**
@@ -137,9 +199,13 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
     // Create an embargo scheduled to be unpublished in the future.
     $this->setEmbargoPastUnpublishDate($this->embargo);
 
-    $nodeCount = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
-    $this->assertCount(2, $nodeCount,
+    $result = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
+    $this->assertCount(2, $result,
       'Embargo has been unpublished.');
+    $this->assertEqualsCanonicalizing([
+      $this->embargoedNode->id(),
+      $this->unembargoedNode->id(),
+    ], array_column($result, 'nid'));
   }
 
 }
