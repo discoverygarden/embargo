@@ -1,6 +1,6 @@
 <?php
 
-namespace Drupal\embargo\src;
+namespace Drupal\embargo;
 
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Database\Connection;
@@ -9,21 +9,61 @@ use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\datetime\Plugin\Field\FieldType\DateTimeItemInterface;
-use Drupal\embargo\EmbargoInterface;
 
 trait EmbargoExistenceQueryTrait {
 
-  protected EntityTypeManagerInterface $entityTypeManager;
-  protected string $currentIp;
-
+  /**
+   * The current user.
+   *
+   * @var \Drupal\Core\Session\AccountProxyInterface
+   */
   protected AccountProxyInterface $user;
 
-  protected DateFormatterInterface $dateFormatter;
+  /**
+   * The IP of the request.
+   *
+   * @var string
+   */
+  protected ?string $currentIp;
 
-  protected TimeInterface $time;
-
+  /**
+   * Instance of a Drupal database connection.
+   *
+   * @var \Drupal\Core\Database\Connection
+   */
   protected Connection $database;
 
+  /**
+   * The entity type manager.
+   *
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   */
+  protected EntityTypeManagerInterface $entityTypeManager;
+
+  /**
+   * Time service.
+   *
+   * @var \Drupal\Component\Datetime\TimeInterface
+   */
+  protected TimeInterface $time;
+
+  /**
+   * Date formatter service.
+   *
+   * @var \Drupal\Core\Datetime\DateFormatterInterface
+   */
+  protected DateFormatterInterface $dateFormatter;
+
+  /**
+   * Helper; apply existence checks to a node(-like) table.
+   *
+   * @param \Drupal\Core\Database\Query\SelectInterface $existence_query
+   *   The query to which to add.
+   * @param string $target_alias
+   *   The alias of the node-like table in the query to which to attach things.
+   * @param array $embargo_types
+   *   The types of embargo to deal with.
+   */
   protected function applyExistenceQuery(SelectInterface $existence_query, string $target_alias, array $embargo_types) {
     $embargo_alias = $existence_query->leftJoin('embargo', 'e', "%alias.embargoed_node = {$target_alias}.nid");
     $user_alias = $existence_query->leftJoin('embargo__exempt_users', 'u', "%alias.entity_id = {$embargo_alias}.id");
