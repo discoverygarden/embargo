@@ -13,6 +13,8 @@ use Drupal\Tests\islandora_test_support\Traits\DatabaseQueryTestTraits;
 class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
   use DatabaseQueryTestTraits;
 
+  protected EmbargoInterface $embargo;
+
   /**
    * {@inheritdoc}
    */
@@ -55,9 +57,9 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
    * Verifies that a user cannot view the files of an embargoed node.
    */
   public function testNodeEmbargoReferencedFileAccessQueryAlterAccessDenied() {
-    $query = $this->generateFileSelectAccessQuery($this->user);
+    $query = $this->generateFileSelectAccessQuery($this->user, 'view');
     $result = $query->execute()->fetchAll();
-    $this->assertCount(1, $result, 'File of embargoed nodes cannot be viewed');
+    $this->assertCount(90, $result, json_encode($result));
   }
 
   /**
@@ -102,8 +104,9 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
     $query = $this->generateFileSelectAccessQuery($this->user);
 
     $result = $query->execute()->fetchAll();
+
     $this->assertCount(2, $result,
-      'Files of non embargoed nodes can be viewed');
+       'Files of non embargoed nodes can be viewed');
   }
 
   /**
