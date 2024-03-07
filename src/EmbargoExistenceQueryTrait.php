@@ -10,6 +10,9 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\datetime\Plugin\Field\FieldType\DateTimeItemInterface;
 
+/**
+ * Helper trait; facilitate filtering of embargoed entities.
+ */
 trait EmbargoExistenceQueryTrait {
 
   /**
