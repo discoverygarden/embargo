@@ -64,7 +64,7 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
   public function testNodeEmbargoReferencedFileAccessQueryAlterAccessDenied() {
     $query = $this->generateFileSelectAccessQuery($this->user, 'view');
     $result = $query->execute()->fetchAll();
-    $this->assertCount(1, $result, json_encode($result));
+    $this->assertCount(1, $result, 'File of embargoed nodes cannot be viewed');
   }
 
   /**
