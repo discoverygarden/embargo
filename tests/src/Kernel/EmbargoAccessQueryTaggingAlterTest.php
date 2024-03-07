@@ -13,6 +13,11 @@ use Drupal\Tests\islandora_test_support\Traits\DatabaseQueryTestTraits;
 class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
   use DatabaseQueryTestTraits;
 
+  /**
+   * Embargo for test.
+   *
+   * @var \Drupal\embargo\EmbargoInterface
+   */
   protected EmbargoInterface $embargo;
 
   /**
