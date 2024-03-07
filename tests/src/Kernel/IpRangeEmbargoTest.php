@@ -2,9 +2,9 @@
 
 namespace Drupal\Tests\embargo\Kernel;
 
-use Drupal\node\NodeInterface;
 use Drupal\embargo\EmbargoInterface;
 use Drupal\embargo\IpRangeInterface;
+use Drupal\node\NodeInterface;
 
 /**
  * Test IpRange embargo.

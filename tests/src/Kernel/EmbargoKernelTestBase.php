@@ -2,9 +2,9 @@
 
 namespace Drupal\Tests\embargo\Kernel;
 
-use Drupal\embargo\Entity\IpRange;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\embargo\EmbargoInterface;
+use Drupal\embargo\Entity\IpRange;
 use Drupal\embargo\IpRangeInterface;
 use Drupal\node\NodeInterface;
 use Drupal\Tests\islandora_test_support\Kernel\AbstractIslandoraKernelTestBase;
@@ -26,7 +26,7 @@ abstract class EmbargoKernelTestBase extends AbstractIslandoraKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected static $modules = ['field', 'options', 'datetime'];
+  protected static $modules = ['field', 'options', 'datetime', 'search_api'];
 
   /**
    * Sets up the basic modules and schemas for testing embargoes.
