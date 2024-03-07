@@ -97,7 +97,8 @@ trait EmbargoExistenceQueryTrait {
     $current_date = $this->dateFormatter->format($this->time->getRequestTime(), 'custom', DateTimeItemInterface::DATE_STORAGE_FORMAT);
     // No indefinite embargoes or embargoes expiring in the future.
     $unexpired_embargo_subquery = $this->database->select('embargo', 'ue')
-      ->fields('ue', ['embargoed_node']);
+      ->fields('ue', ['embargoed_node'])
+      ->where("ue.embargoed_node = {$embargo_alias}.embargoed_node");
     $unexpired_embargo_subquery->condition($unexpired_embargo_subquery->orConditionGroup()
       ->condition('ue.expiration_type', EmbargoInterface::EXPIRATION_TYPE_INDEFINITE)
       ->condition($unexpired_embargo_subquery->andConditionGroup()
@@ -106,11 +107,7 @@ trait EmbargoExistenceQueryTrait {
       )
     );
     $embargo_and
-      ->condition(
-        "{$embargo_alias}.embargoed_node",
-        $unexpired_embargo_subquery,
-        'NOT IN',
-      )
+      ->notExists($unexpired_embargo_subquery)
       ->condition("{$embargo_alias}.expiration_type", EmbargoInterface::EXPIRATION_TYPE_SCHEDULED)
       ->condition("{$embargo_alias}.expiration_date", $current_date, '<=');
 
