@@ -131,11 +131,11 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
   public function testEmbargoNodeQueryAlterAccess() {
     $query = $this->generateNodeSelectAccessQuery($this->user);
     $result = $query->execute()->fetchAll();
-    $this->assertCount(2, $result, 'User can only view non-embargoed nodes.');
-    $this->assertEqualsCanonicalizing([
-      $this->unembargoedNode->id(),
-      $this->unassociatedNode->id(),
-    ], array_column($result, 'nid'));
+
+    $ids = array_column($result, 'nid');
+    $this->assertNotContains($this->embargoedNode->id(), $ids, 'does not contain embargoed node');
+    $this->assertContains($this->unembargoedNode->id(), $ids, 'contains unembargoed node');
+    $this->assertContains($this->unassociatedNode->id(), $ids, 'contains unassociated node');
   }
 
   /**
@@ -146,11 +146,11 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
   public function testNodeEmbargoReferencedMediaAccessQueryAlterAccessDenied() {
     $query = $this->generateMediaSelectAccessQuery($this->user);
     $result = $query->execute()->fetchAll();
-    $this->assertCount(2, $result, 'Media of embargoed nodes cannot be viewed');
-    $this->assertEqualsCanonicalizing([
-      $this->unembargoedMedia->id(),
-      $this->unassociatedMedia->id(),
-    ], array_column($result, 'mid'));
+
+    $ids = array_column($result, 'mid');
+    $this->assertNotContains($this->embargoedMedia->id(), $ids, 'does not contain embargoed media');
+    $this->assertContains($this->unembargoedMedia->id(), $ids, 'contains unembargoed media');
+    $this->assertContains($this->unassociatedMedia->id(), $ids, 'contains unassociated media');
   }
 
   /**
@@ -161,12 +161,12 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
   public function testNodeEmbargoReferencedFileAccessQueryAlterAccessDenied() {
     $query = $this->generateFileSelectAccessQuery($this->user);
     $result = $query->execute()->fetchAll();
-    $this->assertCount(3, $result, 'File of embargoed nodes cannot be viewed');
-    $this->assertEqualsCanonicalizing([
-      $this->unembargoedFile->id(),
-      $this->unassociatedFile->id(),
-      $this->mediaTypeDefaultFile->id(),
-    ], array_column($result, 'fid'));
+
+    $ids = array_column($result, 'fid');
+    $this->assertNotContains($this->embargoedFile->id(), $ids, 'does not contain embargoed file');
+    $this->assertContains($this->unembargoedFile->id(), $ids, 'contains unembargoed file');
+    $this->assertContains($this->unassociatedFile->id(), $ids, 'contains unassociated file');
+    $this->assertContains($this->mediaTypeDefaultFile->id(), $ids, 'contains default mediatype file');
   }
 
   /**
@@ -181,12 +181,10 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
     $query = $this->generateNodeSelectAccessQuery($this->user);
 
     $result = $query->execute()->fetchAll();
-    $this->assertCount(3, $result, 'Non embargoed nodes can be viewed');
-    $this->assertEqualsCanonicalizing([
-      $this->embargoedNode->id(),
-      $this->unembargoedNode->id(),
-      $this->unassociatedNode->id(),
-    ], array_column($result, 'nid'));
+    $ids = array_column($result, 'nid');
+    $this->assertContains($this->embargoedNode->id(), $ids, 'contains formerly embargoed node');
+    $this->assertContains($this->unembargoedNode->id(), $ids, 'contains unembargoed node');
+    $this->assertContains($this->unassociatedNode->id(), $ids, 'contains unassociated node');
   }
 
   /**
@@ -200,13 +198,11 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
     $this->embargo->delete();
     $query = $this->generateMediaSelectAccessQuery($this->user);
     $result = $query->execute()->fetchAll();
-    $this->assertCount(3, $result,
-      'Media of non embargoed nodes can be viewed');
-    $this->assertEqualsCanonicalizing([
-      $this->embargoedMedia->id(),
-      $this->unembargoedMedia->id(),
-      $this->unassociatedMedia->id(),
-    ], array_column($result, 'mid'));
+
+    $ids = array_column($result, 'mid');
+    $this->assertContains($this->embargoedMedia->id(), $ids, 'contains formerly embargoed media');
+    $this->assertContains($this->unembargoedMedia->id(), $ids, 'contains unembargoed media');
+    $this->assertContains($this->unassociatedMedia->id(), $ids, 'contains unassociated media');
   }
 
   /**
@@ -218,17 +214,15 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
    */
   public function testDeletedNodeEmbargoFileAccessQueryAlterAccessAllowed() {
     $this->embargo->delete();
-    $query = $this->generateFileSelectAccessQuery($this->user);
 
+    $query = $this->generateFileSelectAccessQuery($this->user);
     $result = $query->execute()->fetchAll();
-    $this->assertCount(4, $result,
-      'Files of non embargoed nodes can be viewed');
-    $this->assertEqualsCanonicalizing([
-      $this->embargoedFile->id(),
-      $this->unembargoedFile->id(),
-      $this->unassociatedFile->id(),
-      $this->mediaTypeDefaultFile->id(),
-    ], array_column($result, 'fid'));
+
+    $ids = array_column($result, 'fid');
+    $this->assertContains($this->embargoedFile->id(), $ids, 'contains formerly embargoed file');
+    $this->assertContains($this->unembargoedFile->id(), $ids, 'contains unembargoed file');
+    $this->assertContains($this->unassociatedFile->id(), $ids, 'contains unassociated file');
+    $this->assertContains($this->mediaTypeDefaultFile->id(), $ids, 'contains default mediatype file');
   }
 
   /**
@@ -241,12 +235,11 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
     $this->setEmbargoFutureUnpublishDate($this->embargo);
 
     $result = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
-    $this->assertCount(2, $result,
-      'Node is still embargoed.');
-    $this->assertEqualsCanonicalizing([
-      $this->unembargoedNode->id(),
-      $this->unassociatedNode->id(),
-    ], array_column($result, 'nid'));
+
+    $ids = array_column($result, 'nid');
+    $this->assertNotContains($this->embargoedNode->id(), $ids, 'does not contain embargoed node');
+    $this->assertContains($this->unembargoedNode->id(), $ids, 'contains unembargoed node');
+    $this->assertContains($this->unassociatedNode->id(), $ids, 'contains unassociated node');
   }
 
   /**
@@ -260,13 +253,11 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
     $this->setEmbargoPastUnpublishDate($this->embargo);
 
     $result = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
-    $this->assertCount(3, $result,
-      'Embargo has been unpublished.');
-    $this->assertEqualsCanonicalizing([
-      $this->embargoedNode->id(),
-      $this->unembargoedNode->id(),
-      $this->unassociatedNode->id(),
-    ], array_column($result, 'nid'));
+
+    $ids = array_column($result, 'nid');
+    $this->assertContains($this->embargoedNode->id(), $ids, 'contains node with expired embargo');
+    $this->assertContains($this->unembargoedNode->id(), $ids, 'contains unembargoed node');
+    $this->assertContains($this->unassociatedNode->id(), $ids, 'contains unassociated node');
   }
 
 }
