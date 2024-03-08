@@ -81,8 +81,11 @@ class IslandoraHierarchicalAccessEventSubscriber implements EventSubscriberInter
 
     /** @var \Drupal\Core\Database\Query\SelectInterface $existence_query */
     $existence_query = $query->getMetaData('islandora_hierarchical_access_tagged_existence_query');
+    /** @var \Drupal\Core\Database\Query\ConditionInterface $existence_condition */
+    $existence_condition = $existence_query->getMetaData('islandora_hierarchical_access_tagged_existence_condition');
     $this->applyExistenceQuery(
       $existence_query,
+      $existence_condition,
       'lut',
       match ($event->getType()) {
         'file', 'media' => [
@@ -90,7 +93,7 @@ class IslandoraHierarchicalAccessEventSubscriber implements EventSubscriberInter
           EmbargoInterface::EMBARGO_TYPE_NODE,
         ],
         'node' => [EmbargoInterface::EMBARGO_TYPE_NODE],
-      }
+      },
     );
   }
 

@@ -4,6 +4,7 @@ namespace Drupal\embargo;
 
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Database\Connection;
+use Drupal\Core\Database\Query\ConditionInterface;
 use Drupal\Core\Database\Query\SelectInterface;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -67,10 +68,19 @@ trait EmbargoExistenceQueryTrait {
    * @param array $embargo_types
    *   The types of embargo to deal with.
    */
-  protected function applyExistenceQuery(SelectInterface $existence_query, string $target_alias, array $embargo_types) {
+  protected function applyExistenceQuery(
+    SelectInterface $existence_query,
+    ConditionInterface $existence_condition,
+    string $target_alias,
+    array $embargo_types,
+  ) {
     $embargo_alias = $existence_query->leftJoin('embargo', 'e', "%alias.embargoed_node = {$target_alias}.nid");
     $user_alias = $existence_query->leftJoin('embargo__exempt_users', 'u', "%alias.entity_id = {$embargo_alias}.id");
-    $existence_or = $existence_query->orConditionGroup();
+
+
+    $existence_condition->condition(
+      $existence_or = $existence_condition->orConditionGroup()
+    );
 
     // No embargo.
     // XXX: Might have to change to examine one of the fields outside the join
@@ -112,7 +122,6 @@ trait EmbargoExistenceQueryTrait {
       ->condition("{$embargo_alias}.expiration_date", $current_date, '<=');
 
     $existence_or->condition($embargo_and);
-    $existence_query->condition($existence_or);
   }
 
 }

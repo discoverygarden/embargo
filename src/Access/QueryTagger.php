@@ -88,7 +88,15 @@ class QueryTagger {
     if (!$query->hasTag('embargo_access')) {
       $query->addTag('embargo_access');
 
-      $this->applyExistenceQuery($existence_query, 'existence_node', [EmbargoInterface::EMBARGO_TYPE_NODE]);
+      $existence_query->condition($existence_condition = $existence_query->andConditionGroup())
+        ->addMetaData('embargo_existence_condition', $existence_condition);
+
+      $this->applyExistenceQuery(
+        $existence_query,
+        $existence_condition,
+        'existence_node',
+        [EmbargoInterface::EMBARGO_TYPE_NODE],
+      );
     }
   }
 
