@@ -231,7 +231,7 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function testPublishScheduledEmbargoAccess() {
-    // Create an embargo scheduled to be unpublished in the future.
+    // Create an embargo scheduled to be published in the future.
     $this->setEmbargoFutureUnpublishDate($this->embargo);
 
     $result = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
@@ -243,7 +243,7 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
   }
 
   /**
-   * Tests embargo scheduled to be unpublished in the past.
+   * Test embargo scheduled in the past, without any other embargo.
    *
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
@@ -256,6 +256,48 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
 
     $ids = array_column($result, 'nid');
     $this->assertContains($this->embargoedNode->id(), $ids, 'contains node with expired embargo');
+    $this->assertContains($this->unembargoedNode->id(), $ids, 'contains unembargoed node');
+    $this->assertContains($this->unassociatedNode->id(), $ids, 'contains unassociated node');
+  }
+
+  /**
+   * Test embargo scheduled in the past with another relevant scheduled embargo.
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
+   */
+  public function testUnpublishScheduledWithPublishedEmbargoAccess() {
+    $this->embargo->setExpirationType(EmbargoInterface::EXPIRATION_TYPE_SCHEDULED)->save();
+    // Create an embargo scheduled to be unpublished in the future.
+    $this->setEmbargoPastUnpublishDate($this->embargo);
+
+    $embargo = $this->createEmbargo($this->embargoedNode);
+    $embargo->setExpirationType(EmbargoInterface::EXPIRATION_TYPE_SCHEDULED)->save();
+    $this->setEmbargoFutureUnpublishDate($embargo);
+
+    $result = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
+
+    $ids = array_column($result, 'nid');
+    $this->assertNotContains($this->embargoedNode->id(), $ids, 'does not contain node with expired embargo having other schedule embargo in future');
+    $this->assertContains($this->unembargoedNode->id(), $ids, 'contains unembargoed node');
+    $this->assertContains($this->unassociatedNode->id(), $ids, 'contains unassociated node');
+  }
+
+  /**
+   * Test embargo scheduled in the past, but with a separate indefinite embargo.
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
+   */
+  public function testUnpublishScheduledWithIndefiniteEmbargoAccess() {
+    $this->embargo->setExpirationType(EmbargoInterface::EXPIRATION_TYPE_SCHEDULED)->save();
+    // Create an embargo scheduled to be unpublished in the future.
+    $this->setEmbargoPastUnpublishDate($this->embargo);
+
+    $this->createEmbargo($this->embargoedNode);
+
+    $result = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
+
+    $ids = array_column($result, 'nid');
+    $this->assertNotContains($this->embargoedNode->id(), $ids, 'does not contain node with expired embargo having other indefinite embargo');
     $this->assertContains($this->unembargoedNode->id(), $ids, 'contains unembargoed node');
     $this->assertContains($this->unassociatedNode->id(), $ids, 'contains unassociated node');
   }
