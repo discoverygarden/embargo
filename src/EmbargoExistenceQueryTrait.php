@@ -61,54 +61,83 @@ trait EmbargoExistenceQueryTrait {
   /**
    * Helper; apply existence checks to a node(-like) table.
    *
-   * @param \Drupal\Core\Database\Query\SelectInterface $existence_query
-   *   The query to which to add.
-   * @param string $target_alias
+   * @param string[] $target_aliases
    *   The alias of the node-like table in the query to which to attach things.
    * @param array $embargo_types
    *   The types of embargo to deal with.
    */
   protected function applyExistenceQuery(
-    SelectInterface $existence_query,
     ConditionInterface $existence_condition,
-    string $target_alias,
+    array $target_aliases,
     array $embargo_types,
-  ) {
-    $embargo_alias = $existence_query->leftJoin('embargo', 'e', "%alias.embargoed_node = {$target_alias}.nid");
-    $user_alias = $existence_query->leftJoin('embargo__exempt_users', 'u', "%alias.entity_id = {$embargo_alias}.id");
-
-
+  ) : void {
     $existence_condition->condition(
-      $existence_or = $existence_condition->orConditionGroup()
+      $existence_condition->orConditionGroup()
+        ->notExists($this->getNullQuery($target_aliases, $embargo_types))
+        ->exists($this->getAccessibleEmbargoesQuery($target_aliases, $embargo_types))
+    );
+  }
+
+  protected function getNullQuery(array $target_aliases, array $embargo_types) : SelectInterface {
+    $embargo_alias = 'embargo_null';
+    $query = $this->database->select('embargo', $embargo_alias);
+    $query->addExpression(1, 'embargo_null_e');
+
+    $query->where(strtr('!field IN (!targets)', [
+      '!field' => "{$embargo_alias}.embargoed_node",
+      '!targets' => implode(', ', $target_aliases),
+    ]));
+    $query->condition("{$embargo_alias}.embargo_type", $embargo_types, 'IN');
+
+    return $query;
+  }
+
+  protected function getAccessibleEmbargoesQuery(array $target_aliases, array $embargo_types) : SelectInterface {
+    // Embargo exists for the entity, where:
+    $embargo_alias = 'embargo_existence';
+    $embargo_existence = $this->database->select('embargo', $embargo_alias);
+    $embargo_existence->addExpression(1, 'embargo_allowed');
+
+    $embargo_existence->addMetaData('embargo_alias', $embargo_alias);
+
+    $replacements = [
+      '!field' => "{$embargo_alias}.embargoed_node",
+      '!targets' => implode(', ', $target_aliases),
+    ];
+    $embargo_existence->condition(
+      $embargo_existence->orConditionGroup()
+        ->condition($existence_condition = $embargo_existence->andConditionGroup()
+          ->where(strtr('!field IN (!targets)', $replacements))
+          ->condition($embargo_or = $embargo_existence->orConditionGroup())
+      )
     );
 
-    // No embargo.
-    // XXX: Might have to change to examine one of the fields outside the join
-    // condition?
-    $existence_or->isNull("{$embargo_alias}.embargoed_node");
+    $embargo_existence->addMetaData('embargo_existence_condition', $existence_condition);
 
-    // The user is exempt from the embargo.
-    $existence_or->condition("{$user_alias}.exempt_users_target_id", $this->user->id());
-
-    // ... the incoming IP is in an exempt range; or...
+    // - The request IP is exempt.
     /** @var \Drupal\embargo\IpRangeStorageInterface $storage */
     $storage = $this->entityTypeManager->getStorage('embargo_ip_range');
     $applicable_ip_ranges = $storage->getApplicableIpRanges($this->currentIp);
-    if (!empty($applicable_ip_ranges)) {
-      $existence_or->condition("{$embargo_alias}.exempt_ips", array_keys($applicable_ip_ranges), 'IN');
+    if ($applicable_ip_ranges) {
+      $embargo_or->condition("{$embargo_alias}.exempt_ips", array_keys($applicable_ip_ranges), 'IN');
     }
 
-    // With embargo, without exemption.
-    $embargo_and = $existence_or->andConditionGroup();
+    // - The user is exempt.
+    // @todo Should the IP range constraint(s) take precedence?
+    $user_existence = $this->database->select('embargo__exempt_users', 'eeu');
+    $user_existence->addExpression(1, 'user_existence');
+    $user_existence->where("eeu.entity_id = {$embargo_alias}.id")
+      ->condition('eeu.exempt_users_target_id', $this->user->id());
+    $embargo_or->exists($user_existence);
 
-    // Has an embargo of a relevant type.
-    $embargo_and->condition("{$embargo_alias}.embargo_type", $embargo_types, 'IN');
-
+    // - There's a scheduled embargo of an appropriate type and no other
+    //   overriding embargo.
     $current_date = $this->dateFormatter->format($this->time->getRequestTime(), 'custom', DateTimeItemInterface::DATE_STORAGE_FORMAT);
     // No indefinite embargoes or embargoes expiring in the future.
     $unexpired_embargo_subquery = $this->database->select('embargo', 'ue')
-      ->fields('ue', ['embargoed_node'])
-      ->where("ue.embargoed_node = {$embargo_alias}.embargoed_node");
+      ->where("ue.embargoed_node = {$embargo_alias}.embargoed_node")
+      ->condition('ue.embargo_type', $embargo_types, 'IN');
+    $unexpired_embargo_subquery->addExpression(1, 'ueee');
     $unexpired_embargo_subquery->condition($unexpired_embargo_subquery->orConditionGroup()
       ->condition('ue.expiration_type', EmbargoInterface::EXPIRATION_TYPE_INDEFINITE)
       ->condition($unexpired_embargo_subquery->andConditionGroup()
@@ -116,12 +145,16 @@ trait EmbargoExistenceQueryTrait {
         ->condition('ue.expiration_date', $current_date, '>')
       )
     );
-    $embargo_and
-      ->notExists($unexpired_embargo_subquery)
-      ->condition("{$embargo_alias}.expiration_type", EmbargoInterface::EXPIRATION_TYPE_SCHEDULED)
-      ->condition("{$embargo_alias}.expiration_date", $current_date, '<=');
 
-    $existence_or->condition($embargo_and);
+    $embargo_or->condition(
+      $embargo_or->andConditionGroup()
+        ->condition("{$embargo_alias}.embargo_type", $embargo_types, 'IN')
+        ->condition("{$embargo_alias}.expiration_type", EmbargoInterface::EXPIRATION_TYPE_SCHEDULED)
+        ->condition("{$embargo_alias}.expiration_date", $current_date, '<=')
+        ->notExists($unexpired_embargo_subquery)
+    );
+
+    return $embargo_existence;
   }
 
 }

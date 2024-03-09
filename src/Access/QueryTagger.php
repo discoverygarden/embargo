@@ -70,34 +70,7 @@ class QueryTagger {
     }
 
     $query->addMetaData('embargo_tagged_table_aliases', $tagged_table_aliases);
-    $existence_query = $query->getMetaData('embargo_tagged_existence_query');
-
-    if (!$existence_query) {
-      $existence_query = $this->database->select('node', 'existence_node');
-      $existence_query->fields('existence_node', ['nid']);
-      $query->addMetaData('embargo_tagged_existence_query', $existence_query);
-
-      $query->exists($existence_query);
-    }
-
-    $existence_query->where(strtr('!field IN (!targets)', [
-      '!field' => 'existence_node.nid',
-      '!targets' => implode(', ', $target_aliases),
-    ]));
-
-    if (!$query->hasTag('embargo_access')) {
-      $query->addTag('embargo_access');
-
-      $existence_query->condition($existence_condition = $existence_query->andConditionGroup())
-        ->addMetaData('embargo_existence_condition', $existence_condition);
-
-      $this->applyExistenceQuery(
-        $existence_query,
-        $existence_condition,
-        'existence_node',
-        [EmbargoInterface::EMBARGO_TYPE_NODE],
-      );
-    }
+    $this->applyExistenceQuery($query, $target_aliases, [EmbargoInterface::EMBARGO_TYPE_NODE]);
   }
 
 }
