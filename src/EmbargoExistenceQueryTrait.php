@@ -61,6 +61,8 @@ trait EmbargoExistenceQueryTrait {
   /**
    * Helper; apply existence checks to a node(-like) table.
    *
+   * @param \Drupal\Core\Database\Query\ConditionInterface $existence_condition
+   *   The condition object to which to add the existence check.
    * @param string[] $target_aliases
    *   The alias of the node-like table in the query to which to attach things.
    * @param array $embargo_types
@@ -78,6 +80,17 @@ trait EmbargoExistenceQueryTrait {
     );
   }
 
+  /**
+   * Get query for negative assertion.
+   *
+   * @param array $target_aliases
+   *   The target aliases on which to match.
+   * @param array $embargo_types
+   *   The relevant types of embargoes to which to constrain.
+   *
+   * @return \Drupal\Core\Database\Query\SelectInterface
+   *   The negative-asserting query.
+   */
   protected function getNullQuery(array $target_aliases, array $embargo_types) : SelectInterface {
     $embargo_alias = 'embargo_null';
     $query = $this->database->select('embargo', $embargo_alias);
@@ -92,6 +105,17 @@ trait EmbargoExistenceQueryTrait {
     return $query;
   }
 
+  /**
+   * Get query for positive assertion.
+   *
+   * @param array $target_aliases
+   *   The target aliases on which to match.
+   * @param array $embargo_types
+   *   The relevant types of embargoes to which to constrain.
+   *
+   * @return \Drupal\Core\Database\Query\SelectInterface
+   *   The positive-asserting query.
+   */
   protected function getAccessibleEmbargoesQuery(array $target_aliases, array $embargo_types) : SelectInterface {
     // Embargo exists for the entity, where:
     $embargo_alias = 'embargo_existence';
