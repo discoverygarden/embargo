@@ -5,6 +5,7 @@ namespace Drupal\Tests\embargo\Kernel;
 use Drupal\embargo\EmbargoInterface;
 use Drupal\embargo\IpRangeInterface;
 use Drupal\node\NodeInterface;
+use Drupal\Tests\islandora_test_support\Traits\DatabaseQueryTestTraits;
 
 /**
  * Test IpRange embargo.
@@ -12,6 +13,8 @@ use Drupal\node\NodeInterface;
  * @group embargo
  */
 class IpRangeEmbargoTest extends EmbargoKernelTestBase {
+
+  use DatabaseQueryTestTraits;
 
   /**
    * Embargo for test.
@@ -105,8 +108,16 @@ class IpRangeEmbargoTest extends EmbargoKernelTestBase {
     $this->embargoedNodeWithDifferentIpRange = $this->createNode();
     $this->currentIpRangeEntity = $this->createIpRangeEntity($this->ipRange);
     $this->embargoWithoutIpRange = $this->createEmbargo($this->embargoedNodeWithoutIpRange);
-    $this->embargoWithCurrentIpRange = $this->createEmbargo($this->embargoedNodeWithCurrentIpRange, 1, $this->currentIpRangeEntity);
-    $this->embargoWithDifferentIpRange = $this->createEmbargo($this->embargoedNodeWithDifferentIpRange, 1, $this->createIpRangeEntity('0.0.0.0.1/29'));
+    $this->embargoWithCurrentIpRange = $this->createEmbargo(
+      $this->embargoedNodeWithCurrentIpRange,
+      EmbargoInterface::EMBARGO_TYPE_NODE,
+      $this->currentIpRangeEntity,
+    );
+    $this->embargoWithDifferentIpRange = $this->createEmbargo(
+      $this->embargoedNodeWithDifferentIpRange,
+      EmbargoInterface::EMBARGO_TYPE_NODE,
+      $this->createIpRangeEntity('0.0.0.1/29'),
+    );
   }
 
   /**
@@ -125,6 +136,20 @@ class IpRangeEmbargoTest extends EmbargoKernelTestBase {
     $this->assertFalse($this->embargoedNodeWithoutIpRange->access('view', $this->user));
     $this->assertFalse($this->embargoedNodeWithDifferentIpRange->access('view', $this->user));
     $this->assertTrue($this->embargoedNodeWithCurrentIpRange->access('view', $this->user));
+  }
+
+  /**
+   * Test IP range query tagging.
+   */
+  public function testIpRangeQueryTagging() {
+    $results = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
+
+    $ids = array_column($results, 'nid');
+
+    $this->assertContains($this->nonEmbargoedNode->id(), $ids, 'non-embargoed node present');
+    $this->assertNotContains($this->embargoedNodeWithoutIpRange->id(), $ids, 'generally embargoed node absent');
+    $this->assertNotContains($this->embargoedNodeWithDifferentIpRange->id(), $ids, 'node exempted to other ranges absent');
+    $this->assertContains($this->embargoedNodeWithCurrentIpRange->id(), $ids, 'node exempted to our range present');
   }
 
 }
