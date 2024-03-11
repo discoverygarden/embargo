@@ -4,14 +4,19 @@ namespace Drupal\embargo\Plugin\search_api\processor;
 
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Cache\RefinableCacheableDependencyInterface;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\embargo\EmbargoInterface;
+use Drupal\embargo\Plugin\search_api\processor\Property\ListableEntityProcessorProperty;
 use Drupal\search_api\Datasource\DatasourceInterface;
+use Drupal\search_api\Item\ItemInterface;
 use Drupal\search_api\Processor\ProcessorPluginBase;
 use Drupal\search_api\Query\ConditionGroupInterface;
 use Drupal\search_api\Query\QueryInterface;
+use Drupal\search_api\SearchApiException;
+use Drupal\search_api\Utility\Utility;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
@@ -24,6 +29,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
  *   description = @Translation("Add information regarding embargo access
  *   constraints."),
  *   stages = {
+ *     "add_properties" = 20,
  *     "pre_index_save" = 20,
  *     "preprocess_query" = 20,
  *   },
@@ -78,9 +84,68 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
   }
 
   /**
+   * {@inheritdoc}
+   */
+  public function getPropertyDefinitions(DatasourceInterface $datasource = NULL) : array {
+    if ($datasource === NULL) {
+      return [];
+    }
+
+    return [
+      'embargo' => ListableEntityProcessorProperty::create('embargo')
+        ->setList()
+        ->setProcessorId($this->getPluginId()),
+    ];
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * Adapted from search_api's reverse_entity_references processor.
+   *
+   * @see \Drupal\search_api\Plugin\search_api\processor\ReverseEntityReferences::addFieldValues()
+   */
+  public function addFieldValues(ItemInterface $item) : void {
+    if (!in_array($item->getDatasource()->getEntityTypeId(), static::ENTITY_TYPES)) {
+      return;
+    }
+    try {
+      $entity = $item->getOriginalObject()->getValue();
+    }
+    catch (SearchApiException) {
+      return;
+    }
+    if (!($entity instanceof EntityInterface)) {
+      return;
+    }
+
+    $datasource_id = $item->getDatasourceId();
+
+    /** @var \Drupal\search_api\Item\FieldInterface[][][] $to_extract */
+    $to_extract = [];
+    foreach ($item->getFields(FALSE) as $field) {
+      $property_path = $field->getPropertyPath();
+      [$direct, $nested] = Utility::splitPropertyPath($property_path, FALSE);
+      if ($field->getDatasourceId() === $datasource_id
+        && $direct === 'embargo') {
+        $to_extract[$nested][] = $field;
+      }
+    }
+
+    /** @var \Drupal\embargo\EmbargoStorageInterface $embargo_storage */
+    $embargo_storage = $this->entityTypeManager->getStorage('embargo');
+    $embargoes = $embargo_storage->getApplicableEmbargoes($entity);
+
+    foreach ($embargoes as $embargo) {
+      $this->getFieldsHelper()->extractFields($embargo->getTypedData(), $to_extract);
+    }
+
+  }
+
+  /**
    * {@inheritDoc}
    */
-  public function preIndexSave() {
+  public function preIndexSave() : void {
     parent::preIndexSave();
 
     foreach ($this->index->getDatasources() as $datasource_id => $datasource) {
@@ -88,12 +153,12 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
         continue;
       }
 
-      $this->ensureField($datasource_id, 'embargo:entity:id', 'integer');
-      $this->ensureField($datasource_id, 'embargo:entity:embargo_type', 'integer');
-      $this->ensureField($datasource_id, 'embargo:entity:expiration_date', 'date');
-      $this->ensureField($datasource_id, 'embargo:entity:expiration_type', 'integer');
-      $this->ensureField($datasource_id, 'embargo:entity:exempt_ips:entity:id', 'integer');
-      $this->ensureField($datasource_id, 'embargo:entity:exempt_users:entity:uid', 'integer');
+      $this->ensureField($datasource_id, 'embargo:id', 'integer');
+      $this->ensureField($datasource_id, 'embargo:embargo_type', 'integer');
+      $this->ensureField($datasource_id, 'embargo:expiration_date', 'date');
+      $this->ensureField($datasource_id, 'embargo:expiration_type', 'integer');
+      $this->ensureField($datasource_id, 'embargo:exempt_ips:entity:id', 'integer');
+      $this->ensureField($datasource_id, 'embargo:exempt_users:entity:uid', 'integer');
     }
   }
 
@@ -142,19 +207,19 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
     ]);
 
     // No embargo.
-    if ($field = $this->findField($datasource_id, 'embargo:entity:id')) {
+    if ($field = $this->findField($datasource_id, 'embargo:id')) {
       $or_group->addCondition($field->getFieldIdentifier(), NULL);
       $query->addCacheTags(['embargo_list']);
     }
 
     // Embargo duration/schedule.
-    if ($expiration_type_field = $this->findField($datasource_id, 'embargo:entity:expiration_type')) {
+    if ($expiration_type_field = $this->findField($datasource_id, 'embargo:expiration_type')) {
       $schedule_group = $query->createConditionGroup(tags: ['embargo_schedule']);
       // No indefinite embargo.
       $schedule_group->addCondition($expiration_type_field->getFieldIdentifier(), EmbargoInterface::EXPIRATION_TYPE_INDEFINITE, '<>');
 
       // Scheduled embargo in the past and none in the future.
-      if ($scheduled_field = $this->findField($datasource_id, 'embargo:entity:expiration_date')) {
+      if ($scheduled_field = $this->findField($datasource_id, 'embargo:expiration_date')) {
         $schedule_group->addCondition($expiration_type_field->getFieldIdentifier(), EmbargoInterface::EXPIRATION_TYPE_SCHEDULED);
         // Embargo in the past.
         $schedule_group->addCondition($scheduled_field->getFieldIdentifier(), date('Y-m-d', $this->time->getRequestTime()), '<=');
@@ -173,12 +238,12 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
     if ($this->currentUser->isAnonymous()) {
       $query->addCacheContexts(['user.roles:anonymous']);
     }
-    elseif ($field = $this->findField($datasource_id, 'embargo:entity:exempt_users:entity:uid')) {
+    elseif ($field = $this->findField($datasource_id, 'embargo:exempt_users:entity:uid')) {
       $or_group->addCondition($field->getFieldIdentifier(), $this->currentUser->id());
       $query->addCacheContexts(['user']);
     }
 
-    if ($field = $this->findField($datasource_id, 'embargo:entity:exempt_ips:entity:id')) {
+    if ($field = $this->findField($datasource_id, 'embargo:exempt_ips:entity:id')) {
       /** @var \Drupal\embargo\IpRangeStorageInterface $ip_range_storage */
       $ip_range_storage = $this->entityTypeManager->getStorage('embargo_ip_range');
       foreach ($ip_range_storage->getApplicableIpRanges($this->requestStack->getCurrentRequest()
