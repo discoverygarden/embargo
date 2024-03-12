@@ -2,13 +2,11 @@
 
 namespace Drupal\migrate_embargoes_to_embargo\Plugin\migrate\source;
 
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\migrate\Plugin\migrate\source\SourcePluginBase;
 use Drupal\migrate\Plugin\MigrationInterface;
-
-use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\Entity\EntityTypeInterface;
-use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
-
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**

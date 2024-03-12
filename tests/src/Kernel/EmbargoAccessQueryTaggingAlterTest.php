@@ -14,6 +14,13 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
   use DatabaseQueryTestTraits;
 
   /**
+   * Test embargo instance.
+   *
+   * @var \Drupal\embargo\EmbargoInterface
+   */
+  protected EmbargoInterface $embargo;
+
+  /**
    * {@inheritdoc}
    */
   public function setUp(): void {
