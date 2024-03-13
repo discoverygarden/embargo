@@ -6,9 +6,12 @@
  */
 
 use Drupal\Core\Database\Query\AlterableInterface;
+use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\embargo\EmbargoInterface;
 use Drupal\embargo\EmbargoStorage;
+use Drupal\islandora_hierarchical_access\LUTGeneratorInterface;
 
 /**
  * Implements hook_entity_type_alter().
@@ -78,4 +81,78 @@ function embargo_theme($existing, $type, $theme, $path) {
       ],
     ],
   ];
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_insert() for embargo entities.
+ */
+function embargo_embargo_insert(EntityInterface $entity) : void {
+  _embargo_search_api_track($entity);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_update() for embargo entities.
+ */
+function embargo_embargo_update(EntityInterface $entity) : void {
+  _embargo_search_api_track($entity);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_delete() for embargo entities.
+ */
+function embargo_embargo_delete(EntityInterface $entity) : void {
+  _embargo_search_api_track($entity);
+}
+
+/**
+ * Helper; deal with updating indexes of related items.
+ *
+ * @param \Drupal\Core\Entity\EntityInterface $entity
+ *   The embargo instance.
+ */
+function _embargo_search_api_track(EntityInterface $entity) : void {
+  assert($entity instanceof EmbargoInterface);
+  if (!\Drupal::moduleHandler()->moduleExists('search_api')) {
+    return;
+  }
+
+  // On updates, deal with the original value, in addition to the new.
+  if (isset($entity->original)) {
+    _embargo_search_api_track($entity->original);
+  }
+
+  if (!($node = $entity->getEmbargoedNode())) {
+    // No embargoed node?
+    return;
+  }
+
+  /** @var \Drupal\search_api\Plugin\search_api\datasource\ContentEntityTrackingManager $tracking_manager */
+  $tracking_manager = \Drupal::getContainer()->get('search_api.entity_datasource.tracking_manager');
+  /** @var \Drupal\search_api\Utility\TrackingHelperInterface $tracking_helper */
+  $tracking_helper = \Drupal::getContainer()->get('search_api.tracking_helper');
+
+  $track = function (ContentEntityInterface $entity) use ($tracking_manager, $tracking_helper) {
+    $tracking_manager->trackEntityChange($entity);
+    $tracking_helper->trackReferencedEntityUpdate($entity);
+  };
+
+  $track($node);
+
+  $results = \Drupal::database()->select(LUTGeneratorInterface::TABLE_NAME, 'lut')
+    ->fields('lut', ['mid', 'fid'])
+    ->condition('nid', $node->id())
+    ->execute();
+  $media_ids = array_unique($results->fetchCol(/* 0 */));
+  $file_ids = array_unique($results->fetchCol(1));
+
+  $entity_type_manager = \Drupal::entityTypeManager();
+  /** @var \Drupal\media\MediaInterface $media */
+  foreach ($entity_type_manager->getStorage('media')->loadMultiple($media_ids) as $media) {
+    $track($media);
+  }
+  /** @var \Drupal\file\FileInterface $file */
+  foreach ($entity_type_manager->getStorage('file')->loadMultiple($file_ids) as $file) {
+    $track($file);
+  }
+
 }
