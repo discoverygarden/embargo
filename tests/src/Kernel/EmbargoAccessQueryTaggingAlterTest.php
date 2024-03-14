@@ -3,6 +3,10 @@
 namespace Drupal\Tests\embargo\Kernel;
 
 use Drupal\embargo\EmbargoInterface;
+use Drupal\file\FileInterface;
+use Drupal\media\Entity\Media;
+use Drupal\media\MediaInterface;
+use Drupal\node\NodeInterface;
 use Drupal\Tests\islandora_test_support\Traits\DatabaseQueryTestTraits;
 
 /**
@@ -21,17 +25,102 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
   protected EmbargoInterface $embargo;
 
   /**
+   * Embargoed node from ::setUp().
+   *
+   * @var \Drupal\node\NodeInterface
+   */
+  protected NodeInterface $embargoedNode;
+
+  /**
+   * Embargoed media from ::setUp().
+   *
+   * @var \Drupal\media\MediaInterface
+   */
+  protected MediaInterface $embargoedMedia;
+
+  /**
+   * Embargoed file from ::setUp().
+   *
+   * @var \Drupal\file\FileInterface
+   */
+  protected FileInterface $embargoedFile;
+
+  /**
+   * Unembargoed node from ::setUp().
+   *
+   * @var \Drupal\node\NodeInterface
+   */
+  protected NodeInterface $unembargoedNode;
+
+  /**
+   * Unembargoed media from ::setUp().
+   *
+   * @var \Drupal\media\MediaInterface
+   */
+  protected MediaInterface $unembargoedMedia;
+
+  /**
+   * Unembargoed file from ::setUp().
+   *
+   * @var \Drupal\file\FileInterface
+   */
+  protected FileInterface $unembargoedFile;
+
+  /**
+   * Unassociated node from ::setUp().
+   *
+   * @var \Drupal\node\NodeInterface
+   */
+  protected NodeInterface $unassociatedNode;
+
+  /**
+   * Unassociated media from ::setUp().
+   *
+   * @var \Drupal\media\MediaInterface
+   */
+  protected MediaInterface $unassociatedMedia;
+
+  /**
+   * Unassociated file from ::setUp().
+   *
+   * @var \Drupal\file\FileInterface
+   */
+  protected FileInterface $unassociatedFile;
+
+  /**
+   * Lazily created "default thumbnail" image file for (file) media.
+   *
+   * @var \Drupal\file\FileInterface
+   * @see https://git.drupalcode.org/project/drupal/-/blob/cd2c8e49c861a70b0f39b17c01051b16fd6a2662/core/modules/media/src/Entity/Media.php#L203-208
+   */
+  protected FileInterface $mediaTypeDefaultFile;
+
+  /**
    * {@inheritdoc}
    */
   public function setUp(): void {
     parent::setUp();
 
     // Create two nodes one embargoed and one non-embargoed.
-    $embargoedNode = $this->createNode();
-    $this->createMedia($this->createFile(), $embargoedNode);
-    $this->embargo = $this->createEmbargo($embargoedNode);
+    $this->embargoedNode = $this->createNode();
+    $this->embargoedMedia = $this->createMedia($this->embargoedFile = $this->createFile(), $this->embargoedNode);
+    $this->embargo = $this->createEmbargo($this->embargoedNode);
 
-    $this->createNode();
+    $this->unembargoedNode = $this->createNode();
+    $this->unembargoedMedia = $this->createMedia($this->unembargoedFile = $this->createFile(), $this->unembargoedNode);
+
+    $this->unassociatedNode = $this->createNode();
+    $this->unassociatedMedia = Media::create([
+      'bundle' => $this->createMediaType('file', ['id' => 'file_two'])->id(),
+    ])->setPublished();
+    $this->unassociatedMedia->save();
+    $this->unassociatedFile = $this->createFile();
+
+    // XXX: Media lazily creates a "default thumbnail" image file by default.
+    // @see https://git.drupalcode.org/project/drupal/-/blob/cd2c8e49c861a70b0f39b17c01051b16fd6a2662/core/modules/media/src/Entity/Media.php#L203-208
+    $files = $this->storage('file')->loadByProperties(['filename' => 'generic.png']);
+    $this->assertCount(1, $files, 'only the one generic file.');
+    $this->mediaTypeDefaultFile = reset($files);
   }
 
   /**
@@ -42,7 +131,11 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
   public function testEmbargoNodeQueryAlterAccess() {
     $query = $this->generateNodeSelectAccessQuery($this->user);
     $result = $query->execute()->fetchAll();
-    $this->assertCount(1, $result, 'User can only view non-embargoed node.');
+
+    $ids = array_column($result, 'nid');
+    $this->assertNotContains($this->embargoedNode->id(), $ids, 'does not contain embargoed node');
+    $this->assertContains($this->unembargoedNode->id(), $ids, 'contains unembargoed node');
+    $this->assertContains($this->unassociatedNode->id(), $ids, 'contains unassociated node');
   }
 
   /**
@@ -53,7 +146,11 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
   public function testNodeEmbargoReferencedMediaAccessQueryAlterAccessDenied() {
     $query = $this->generateMediaSelectAccessQuery($this->user);
     $result = $query->execute()->fetchAll();
-    $this->assertCount(0, $result, 'Media of embargoed nodes cannot be viewed');
+
+    $ids = array_column($result, 'mid');
+    $this->assertNotContains($this->embargoedMedia->id(), $ids, 'does not contain embargoed media');
+    $this->assertContains($this->unembargoedMedia->id(), $ids, 'contains unembargoed media');
+    $this->assertContains($this->unassociatedMedia->id(), $ids, 'contains unassociated media');
   }
 
   /**
@@ -64,7 +161,12 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
   public function testNodeEmbargoReferencedFileAccessQueryAlterAccessDenied() {
     $query = $this->generateFileSelectAccessQuery($this->user);
     $result = $query->execute()->fetchAll();
-    $this->assertCount(1, $result, 'File of embargoed nodes cannot be viewed');
+
+    $ids = array_column($result, 'fid');
+    $this->assertNotContains($this->embargoedFile->id(), $ids, 'does not contain embargoed file');
+    $this->assertContains($this->unembargoedFile->id(), $ids, 'contains unembargoed file');
+    $this->assertContains($this->unassociatedFile->id(), $ids, 'contains unassociated file');
+    $this->assertContains($this->mediaTypeDefaultFile->id(), $ids, 'contains default mediatype file');
   }
 
   /**
@@ -79,7 +181,10 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
     $query = $this->generateNodeSelectAccessQuery($this->user);
 
     $result = $query->execute()->fetchAll();
-    $this->assertCount(2, $result, 'Non embargoed nodes can be viewed');
+    $ids = array_column($result, 'nid');
+    $this->assertContains($this->embargoedNode->id(), $ids, 'contains formerly embargoed node');
+    $this->assertContains($this->unembargoedNode->id(), $ids, 'contains unembargoed node');
+    $this->assertContains($this->unassociatedNode->id(), $ids, 'contains unassociated node');
   }
 
   /**
@@ -93,8 +198,11 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
     $this->embargo->delete();
     $query = $this->generateMediaSelectAccessQuery($this->user);
     $result = $query->execute()->fetchAll();
-    $this->assertCount(1, $result,
-      'Media of non embargoed nodes can be viewed');
+
+    $ids = array_column($result, 'mid');
+    $this->assertContains($this->embargoedMedia->id(), $ids, 'contains formerly embargoed media');
+    $this->assertContains($this->unembargoedMedia->id(), $ids, 'contains unembargoed media');
+    $this->assertContains($this->unassociatedMedia->id(), $ids, 'contains unassociated media');
   }
 
   /**
@@ -106,11 +214,15 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
    */
   public function testDeletedNodeEmbargoFileAccessQueryAlterAccessAllowed() {
     $this->embargo->delete();
-    $query = $this->generateFileSelectAccessQuery($this->user);
 
+    $query = $this->generateFileSelectAccessQuery($this->user);
     $result = $query->execute()->fetchAll();
-    $this->assertCount(2, $result,
-      'Files of non embargoed nodes can be viewed');
+
+    $ids = array_column($result, 'fid');
+    $this->assertContains($this->embargoedFile->id(), $ids, 'contains formerly embargoed file');
+    $this->assertContains($this->unembargoedFile->id(), $ids, 'contains unembargoed file');
+    $this->assertContains($this->unassociatedFile->id(), $ids, 'contains unassociated file');
+    $this->assertContains($this->mediaTypeDefaultFile->id(), $ids, 'contains default mediatype file');
   }
 
   /**
@@ -119,16 +231,19 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function testPublishScheduledEmbargoAccess() {
-    // Create an embargo scheduled to be unpublished in the future.
+    // Create an embargo scheduled to be published in the future.
     $this->setEmbargoFutureUnpublishDate($this->embargo);
 
-    $nodeCount = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
-    $this->assertCount(1, $nodeCount,
-      'Node is still embargoed.');
+    $result = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
+
+    $ids = array_column($result, 'nid');
+    $this->assertNotContains($this->embargoedNode->id(), $ids, 'does not contain embargoed node');
+    $this->assertContains($this->unembargoedNode->id(), $ids, 'contains unembargoed node');
+    $this->assertContains($this->unassociatedNode->id(), $ids, 'contains unassociated node');
   }
 
   /**
-   * Tests embargo scheduled to be unpublished in the past.
+   * Test embargo scheduled in the past, without any other embargo.
    *
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
@@ -137,9 +252,54 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
     // Create an embargo scheduled to be unpublished in the future.
     $this->setEmbargoPastUnpublishDate($this->embargo);
 
-    $nodeCount = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
-    $this->assertCount(2, $nodeCount,
-      'Embargo has been unpublished.');
+    $result = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
+
+    $ids = array_column($result, 'nid');
+    $this->assertContains($this->embargoedNode->id(), $ids, 'contains node with expired embargo');
+    $this->assertContains($this->unembargoedNode->id(), $ids, 'contains unembargoed node');
+    $this->assertContains($this->unassociatedNode->id(), $ids, 'contains unassociated node');
+  }
+
+  /**
+   * Test embargo scheduled in the past with another relevant scheduled embargo.
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
+   */
+  public function testUnpublishScheduledWithPublishedEmbargoAccess() {
+    $this->embargo->setExpirationType(EmbargoInterface::EXPIRATION_TYPE_SCHEDULED)->save();
+    // Create an embargo scheduled to be unpublished in the future.
+    $this->setEmbargoPastUnpublishDate($this->embargo);
+
+    $embargo = $this->createEmbargo($this->embargoedNode);
+    $embargo->setExpirationType(EmbargoInterface::EXPIRATION_TYPE_SCHEDULED)->save();
+    $this->setEmbargoFutureUnpublishDate($embargo);
+
+    $result = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
+
+    $ids = array_column($result, 'nid');
+    $this->assertNotContains($this->embargoedNode->id(), $ids, 'does not contain node with expired embargo having other schedule embargo in future');
+    $this->assertContains($this->unembargoedNode->id(), $ids, 'contains unembargoed node');
+    $this->assertContains($this->unassociatedNode->id(), $ids, 'contains unassociated node');
+  }
+
+  /**
+   * Test embargo scheduled in the past, but with a separate indefinite embargo.
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
+   */
+  public function testUnpublishScheduledWithIndefiniteEmbargoAccess() {
+    $this->embargo->setExpirationType(EmbargoInterface::EXPIRATION_TYPE_SCHEDULED)->save();
+    // Create an embargo scheduled to be unpublished in the future.
+    $this->setEmbargoPastUnpublishDate($this->embargo);
+
+    $this->createEmbargo($this->embargoedNode);
+
+    $result = $this->generateNodeSelectAccessQuery($this->user)->execute()->fetchAll();
+
+    $ids = array_column($result, 'nid');
+    $this->assertNotContains($this->embargoedNode->id(), $ids, 'does not contain node with expired embargo having other indefinite embargo');
+    $this->assertContains($this->unembargoedNode->id(), $ids, 'contains unembargoed node');
+    $this->assertContains($this->unassociatedNode->id(), $ids, 'contains unassociated node');
   }
 
 }
