@@ -6,11 +6,14 @@ use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Cache\RefinableCacheableDependencyInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Field\EntityReferenceFieldItemListInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\embargo\EmbargoInterface;
 use Drupal\embargo\Plugin\search_api\processor\Property\ListableEntityProcessorProperty;
 use Drupal\search_api\Datasource\DatasourceInterface;
+use Drupal\search_api\IndexInterface;
+use Drupal\search_api\Item\FieldInterface;
 use Drupal\search_api\Item\ItemInterface;
 use Drupal\search_api\Processor\ProcessorPluginBase;
 use Drupal\search_api\Query\ConditionGroupInterface;
@@ -148,17 +151,41 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
   public function preIndexSave() : void {
     parent::preIndexSave();
 
+    /** @var \Drupal\Core\Entity\EntityFieldManagerInterface $field_manager */
+    $field_manager = \Drupal::service('entity_field.manager');
+    $base_field_definitions = $field_manager->getBaseFieldDefinitions('embargo');
+
+    $ensure_label = function (FieldInterface $field) use ($base_field_definitions) {
+      if ($field->getLabel() === NULL) {
+        $label_pieces = ['Embargo:'];
+
+        $path_components = explode(IndexInterface::PROPERTY_PATH_SEPARATOR, $field->getPropertyPath(), 3);
+        $base_field = $base_field_definitions[$path_components[1]];
+        $label_pieces[] = $base_field->getLabel();
+
+        if (is_a($base_field->getClass(), EntityReferenceFieldItemListInterface::class, TRUE)) {
+          $label_pieces[] = 'Entity';
+          $label_pieces[] = 'ID';
+        }
+        $field->setLabel(implode(' ', $label_pieces));
+      }
+      return $field;
+    };
+
     foreach ($this->index->getDatasources() as $datasource_id => $datasource) {
       if (!in_array($datasource->getEntityTypeId(), static::ENTITY_TYPES)) {
         continue;
       }
 
-      $this->ensureField($datasource_id, 'embargo:id', 'integer');
-      $this->ensureField($datasource_id, 'embargo:embargo_type', 'integer');
-      $this->ensureField($datasource_id, 'embargo:expiration_date', 'date');
-      $this->ensureField($datasource_id, 'embargo:expiration_type', 'integer');
-      $this->ensureField($datasource_id, 'embargo:exempt_ips:entity:id', 'integer');
-      $this->ensureField($datasource_id, 'embargo:exempt_users:entity:uid', 'integer');
+      $fields = [
+        $this->ensureField($datasource_id, 'embargo:id', 'integer'),
+        $this->ensureField($datasource_id, 'embargo:embargo_type', 'integer'),
+        $this->ensureField($datasource_id, 'embargo:expiration_date', 'date'),
+        $this->ensureField($datasource_id, 'embargo:expiration_type', 'integer'),
+        $this->ensureField($datasource_id, 'embargo:exempt_ips:entity:id', 'integer'),
+        $this->ensureField($datasource_id, 'embargo:exempt_users:entity:uid', 'integer'),
+      ];
+      array_map($ensure_label, $fields);
     }
   }
 
