@@ -378,31 +378,47 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
   }
 
   /**
-   * The maximum age for which this object may be cached.
-   *
-   * @return int
-   *   The maximum time in seconds that this object may be cached.
+   * {@inheritDoc}
    */
   public function getCacheMaxAge() {
+    $max_age = parent::getCacheMaxAge();
+
     $now = time();
     // Invalidate cache after a scheduled embargo expires.
     if ($this->getExpirationType() === static::EXPIRATION_TYPE_SCHEDULED && !$this->expiresBefore($now)) {
-      return $this->getExpirationDate()->getTimestamp() - $now;
+      $max_age = Cache::mergeMaxAges($max_age, $this->getExpirationDate()->getTimestamp() - $now);
     }
-    // Other properties of the embargo are not time dependent.
-    return parent::getCacheMaxAge();
+
+    return $max_age;
   }
 
   /**
    * {@inheritdoc}
    */
   public function getCacheTags() {
-    $tags = parent::getCacheTags();
-    $tags[] = "node:{$this->getEmbargoedNode()->id()}";
+    $tags = Cache::mergeTags(parent::getCacheTags(), $this->getEmbargoedNode()->getCacheTags());
+
     if ($this->getExemptIps()) {
       $tags = Cache::mergeTags($tags, $this->getExemptIps()->getCacheTags());
     }
     return $tags;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  public function getCacheContexts() {
+    $contexts = Cache::mergeContexts(
+      parent::getCacheContexts(),
+      $this->getEmbargoedNode()->getCacheContexts(),
+      [$this->getExemptUsers() ? 'user' : 'user.permissions'],
+    );
+
+    if ($this->getExemptIps()) {
+      $contexts = Cache::mergeContexts($contexts, $this->getExemptIps()->getCacheContexts());
+    }
+
+    return $contexts;
   }
 
   /**
