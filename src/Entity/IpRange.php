@@ -3,6 +3,7 @@
 namespace Drupal\embargo\Entity;
 
 use Drupal\Component\Utility\UrlHelper;
+use Drupal\Core\Cache\Cache;
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\EntityStorageException;
 use Drupal\Core\Entity\EntityStorageInterface;
@@ -237,6 +238,15 @@ class IpRange extends ContentEntityBase implements IpRangeInterface {
       return $mask <= 128;
     }
     return FALSE;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  public function getCacheContexts() {
+    return Cache::mergeContexts(parent::getCacheContexts(), [
+      'ip.embargo_range',
+    ]);
   }
 
 }

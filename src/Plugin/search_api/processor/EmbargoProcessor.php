@@ -251,7 +251,7 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
         $or_group->addCondition($field->getFieldIdentifier(), $ipRange->id());
         $query->addCacheableDependency($ipRange);
       }
-      $query->addCacheContexts(['ip']);
+      $query->addCacheContexts(['ip.embargo_range']);
     }
 
     return (count($or_group->getConditions()) > 0) ? $or_group : NULL;
