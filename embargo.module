@@ -10,6 +10,7 @@ use Drupal\Core\Database\Query\AlterableInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\embargo\EmbargoStorage;
+use Drupal\media\MediaInterface;
 use Drupal\node\NodeInterface;
 
 /**
@@ -117,4 +118,37 @@ function embargo_node_delete(EntityInterface $entity) : void {
   /** @var \Drupal\embargo\SearchApiTracker $tracker */
   $tracker = \Drupal::service('embargo.search_api_tracker_helper');
   $tracker->propagateChildren($entity);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_insert() for media entities.
+ */
+function embargo_media_insert(EntityInterface $entity) : void {
+  assert($entity instanceof MediaInterface);
+
+  /** @var \Drupal\embargo\SearchApiTracker $tracker */
+  $tracker = \Drupal::service('embargo.search_api_tracker_helper');
+  $tracker->mediaWriteReaction($entity);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_update() for media entities.
+ */
+function embargo_media_update(EntityInterface $entity) : void {
+  assert($entity instanceof MediaInterface);
+
+  /** @var \Drupal\embargo\SearchApiTracker $tracker */
+  $tracker = \Drupal::service('embargo.search_api_tracker_helper');
+  $tracker->mediaWriteReaction($entity);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_delete() for media entities.
+ */
+function embargo_media_delete(EntityInterface $entity) : void {
+  assert($entity instanceof MediaInterface);
+
+  /** @var \Drupal\embargo\SearchApiTracker $tracker */
+  $tracker = \Drupal::service('embargo.search_api_tracker_helper');
+  $tracker->mediaDeleteReaction($entity);
 }

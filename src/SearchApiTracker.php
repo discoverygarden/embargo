@@ -8,7 +8,11 @@ use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
+use Drupal\file\FileInterface;
+use Drupal\islandora\IslandoraUtils;
 use Drupal\islandora_hierarchical_access\LUTGeneratorInterface;
+use Drupal\media\MediaInterface;
+use Drupal\media\MediaTypeInterface;
 use Drupal\node\NodeInterface;
 use Drupal\search_api\Plugin\search_api\datasource\ContentEntityTrackingManager;
 use Drupal\search_api\Utility\TrackingHelperInterface;
@@ -79,7 +83,7 @@ class SearchApiTracker implements ContainerInjectionInterface {
    * @param \Drupal\Core\Entity\ContentEntityInterface $entity
    *   The entity to track.
    */
-  protected function doTrack(ContentEntityInterface $entity) : void {
+  public function doTrack(ContentEntityInterface $entity) : void {
     $this->trackingManager->trackEntityChange($entity);
     $this->trackingHelper->trackReferencedEntityUpdate($entity);
   }
@@ -105,6 +109,128 @@ class SearchApiTracker implements ContainerInjectionInterface {
     /** @var \Drupal\file\FileInterface $file */
     foreach ($this->entityTypeManager->getStorage('file')->loadMultiple($file_ids) as $file) {
       $this->doTrack($file);
+    }
+  }
+
+  /**
+   * Helper; get the media type with its specific interface.
+   *
+   * @param \Drupal\media\MediaInterface $media
+   *   The media of which to get the type.
+   *
+   * @return \Drupal\media\MediaTypeInterface
+   *   The media type of the given media.
+   */
+  protected function getMediaType(MediaInterface $media) : MediaTypeInterface {
+    $type = $media->getEntityType();
+    assert($type instanceof MediaTypeInterface);
+    return $type;
+  }
+
+  /**
+   * Determine if special tracking is required for this media.
+   *
+   * Given search_api indexes could be built specifically for files, we should
+   * reset any related tracking due to the islandora_hierarchical_access
+   * relations across the entity types.
+   *
+   * @param \Drupal\media\MediaInterface $media
+   *   The media to test.
+   *
+   * @return bool
+   *   TRUE if relevant; otherwise, FALSE.
+   */
+  public function isMediaRelevant(MediaInterface $media) : bool {
+    // No `field_media_of`, so unrelated to IHA LUT.
+    if (!$media->hasField(IslandoraUtils::MEDIA_OF_FIELD)) {
+      return FALSE;
+    }
+
+    $media_type = $this->getMediaType($media);
+    $media_source = $media_type->getSource();
+    if ($media_source->getSourceFieldDefinition($media_type)->getSetting('target_type') !== 'file') {
+      return FALSE;
+    }
+
+    return TRUE;
+  }
+
+  /**
+   * Get the file for the media.
+   *
+   * @param \Drupal\media\MediaInterface $media
+   *   The media of which to get the file.
+   *
+   * @return \Drupal\file\FileInterface|null
+   *   The file if it could be loaded; otherwise, NULL.
+   */
+  public function mediaGetFile(MediaInterface $media) : ?FileInterface {
+    return $media ?
+      $this->entityTypeManager->getStorage('file')->load(
+        $this->getMediaType($media)->getSource()->getSourceFieldValue($media)
+      ) :
+      NULL;
+  }
+
+  /**
+   * Helper; get the containing nodes.
+   *
+   * @param \Drupal\media\MediaInterface|null $media
+   *   The media of which to enumerate the containing node(s).
+   *
+   * @return \Drupal\node\NodeInterface[]
+   *   The containing node(s).
+   */
+  protected function getMediaContainers(?MediaInterface $media) : array {
+    /** @var \Drupal\Core\Field\EntityReferenceFieldItemList|null $containers */
+    $containers = $media?->get(IslandoraUtils::MEDIA_OF_FIELD);
+    return $containers?->referencedEntities() ?? [];
+  }
+
+  /**
+   * React to media create/update events.
+   *
+   * @param \Drupal\media\MediaInterface $media
+   *   The media being operated on.
+   */
+  public function mediaWriteReaction(MediaInterface $media) : void {
+    if (!$this->isMediaRelevant($media)) {
+      return;
+    }
+
+    $original_file = $this->mediaGetFile($media->original ?? NULL);
+    $current_file = $this->mediaGetFile($media);
+
+    $same_file = $original_file === $current_file;
+
+    $original_containers = array_values($this->getMediaContainers($media->original ?? NULL));
+    $current_containers = array_values($this->getMediaContainers($media));
+
+    $same_containers = $current_containers == array_intersect($current_containers, $original_containers);
+
+    if (!($same_file && $same_containers)) {
+      if ($original_file) {
+        $this->doTrack($original_file);
+      }
+      if ($current_file) {
+        $this->doTrack($current_file);
+      }
+    }
+  }
+
+  /**
+   * React to media delete events.
+   *
+   * @param \Drupal\media\MediaInterface $media
+   *   The media entity that is/was being deleted.
+   */
+  public function mediaDeleteReaction(MediaInterface $media) : void {
+    if (!$this->isMediaRelevant($media)) {
+      return;
+    }
+
+    if ($current_file = $this->mediaGetFile($media)) {
+      $this->doTrack($current_file);
     }
   }
 
