@@ -43,4 +43,3 @@ services:
     factory: [null, 'create']
     arguments:
       - '@service_container'
-
