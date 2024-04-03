@@ -84,6 +84,9 @@ class SearchApiTracker implements ContainerInjectionInterface {
    *   The entity to track.
    */
   public function doTrack(ContentEntityInterface $entity) : void {
+    if (!$this->moduleHandler->moduleExists('search_api')) {
+      return;
+    }
     $this->trackingManager->trackEntityChange($entity);
     $this->trackingHelper->trackReferencedEntityUpdate($entity);
   }
@@ -122,7 +125,7 @@ class SearchApiTracker implements ContainerInjectionInterface {
    *   The media type of the given media.
    */
   protected function getMediaType(MediaInterface $media) : MediaTypeInterface {
-    $type = $media->getEntityType();
+    $type = $this->entityTypeManager->getStorage('media_type')->load($media->bundle());
     assert($type instanceof MediaTypeInterface);
     return $type;
   }
@@ -147,7 +150,7 @@ class SearchApiTracker implements ContainerInjectionInterface {
     }
 
     $media_type = $this->getMediaType($media);
-    $media_source = $media_type->getSource();
+    $media_source = $media->getSource();
     if ($media_source->getSourceFieldDefinition($media_type)->getSetting('target_type') !== 'file') {
       return FALSE;
     }
@@ -158,16 +161,16 @@ class SearchApiTracker implements ContainerInjectionInterface {
   /**
    * Get the file for the media.
    *
-   * @param \Drupal\media\MediaInterface $media
+   * @param \Drupal\media\MediaInterface|null $media
    *   The media of which to get the file.
    *
    * @return \Drupal\file\FileInterface|null
    *   The file if it could be loaded; otherwise, NULL.
    */
-  public function mediaGetFile(MediaInterface $media) : ?FileInterface {
+  public function mediaGetFile(?MediaInterface $media) : ?FileInterface {
     return $media ?
       $this->entityTypeManager->getStorage('file')->load(
-        $this->getMediaType($media)->getSource()->getSourceFieldValue($media)
+        $media->getSource()->getSourceFieldValue($media)
       ) :
       NULL;
   }
