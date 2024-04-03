@@ -5,6 +5,7 @@
  * Hook implementations.
  */
 
+use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Database\Query\AlterableInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Session\AccountInterface;
@@ -14,7 +15,7 @@ use Drupal\node\NodeInterface;
 /**
  * Implements hook_entity_type_alter().
  */
-function embargo_entity_type_alter(array &$entity_types) {
+function embargo_entity_type_alter(array &$entity_types) : void {
   $applicable_entity_types = EmbargoStorage::applicableEntityTypes();
   foreach ($applicable_entity_types as $entity_type_id) {
     $entity_type = &$entity_types[$entity_type_id];
@@ -25,7 +26,7 @@ function embargo_entity_type_alter(array &$entity_types) {
 /**
  * Implements hook_entity_access().
  */
-function embargo_entity_access(EntityInterface $entity, $operation, AccountInterface $account) {
+function embargo_entity_access(EntityInterface $entity, $operation, AccountInterface $account) : AccessResultInterface {
   /** @var \Drupal\embargo\Access\EmbargoAccessCheckInterface $service */
   $service = \Drupal::service('access_check.embargo');
   return $service->access($entity, $account);
@@ -34,7 +35,7 @@ function embargo_entity_access(EntityInterface $entity, $operation, AccountInter
 /**
  * Implements hook_file_download().
  */
-function embargo_file_download($uri) {
+function embargo_file_download($uri) : array|int {
   $files = \Drupal::entityTypeManager()
     ->getStorage('file')
     ->loadByProperties(['uri' => $uri]);
@@ -50,7 +51,7 @@ function embargo_file_download($uri) {
 /**
  * Implements hook_query_TAG_alter() for `node_access` tagged queries.
  */
-function embargo_query_node_access_alter(AlterableInterface $query) {
+function embargo_query_node_access_alter(AlterableInterface $query) : void {
   /** @var \Drupal\embargo\Access\QueryTagger $tagger */
   $tagger = \Drupal::service('embargo.query_tagger');
   $tagger->tagNode($query);
@@ -59,7 +60,7 @@ function embargo_query_node_access_alter(AlterableInterface $query) {
 /**
  * Implements hook_theme().
  */
-function embargo_theme($existing, $type, $theme, $path) {
+function embargo_theme($existing, $type, $theme, $path) : array {
   return [
     'embargo_ip_access_exemption' => [
       'template' => 'embargo-ip-access-exemption',
