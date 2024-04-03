@@ -38,3 +38,9 @@ services:
       - '@service_container'
     tags:
       - { name: 'event_subscriber' }
+  embargo.search_api_tracker_helper:
+    class: Drupal\embargo\SearchApiTracker
+    factory: [null, 'create']
+    arguments:
+      - '@service_container'
+
