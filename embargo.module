@@ -35,7 +35,7 @@ function embargo_entity_access(EntityInterface $entity, $operation, AccountInter
 /**
  * Implements hook_file_download().
  */
-function embargo_file_download($uri) : array|int {
+function embargo_file_download($uri) : null|array|int {
   $files = \Drupal::entityTypeManager()
     ->getStorage('file')
     ->loadByProperties(['uri' => $uri]);
