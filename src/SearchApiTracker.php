@@ -187,7 +187,12 @@ class SearchApiTracker implements ContainerInjectionInterface {
   protected function getMediaContainers(?MediaInterface $media) : array {
     /** @var \Drupal\Core\Field\EntityReferenceFieldItemList|null $containers */
     $containers = $media?->get(IslandoraUtils::MEDIA_OF_FIELD);
-    return $containers?->referencedEntities() ?? [];
+    $entities = $containers?->referencedEntities() ?? [];
+    $to_return = [];
+    foreach ($entities as $entity) {
+      $to_return[$entity->id()] = $entity;
+    }
+    return $to_return;
   }
 
   /**
@@ -206,10 +211,10 @@ class SearchApiTracker implements ContainerInjectionInterface {
 
     $same_file = $original_file === $current_file;
 
-    $original_containers = array_values($this->getMediaContainers($media->original ?? NULL));
-    $current_containers = array_values($this->getMediaContainers($media));
+    $original_containers = $this->getMediaContainers($media->original ?? NULL);
+    $current_containers = $this->getMediaContainers($media);
 
-    $same_containers = $current_containers == array_intersect($current_containers, $original_containers);
+    $same_containers = $current_containers == array_intersect_key($current_containers, $original_containers);
 
     if (!($same_file && $same_containers)) {
       if ($original_file) {
