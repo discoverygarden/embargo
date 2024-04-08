@@ -43,3 +43,10 @@ services:
     factory: [null, 'create']
     arguments:
       - '@service_container'
+  embargo.search_api_solr_join_processor_event_subscriber:
+    class: Drupal\embargo\EventSubscriber\EmbargoJoinProcessorEventSubscriber
+    factory: [null, 'create']
+    arguments:
+      - '@service_container'
+    tags:
+      - { name: 'event_subscriber' }
