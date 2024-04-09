@@ -247,12 +247,7 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
       return;
     }
 
-    /** @var \Drupal\embargo\IpRangeInterface[] $ip_range_entities */
-    $ip_range_entities = $this->entityTypeManager->getStorage('embargo_ip_range')
-      ->getApplicableIpRanges($this->requestStack->getCurrentRequest()->getClientIp());
-
     $info = [
-      'ip_ranges' => $ip_range_entities,
       'queries' => [],
     ];
 
@@ -273,6 +268,11 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
       return;
     }
 
+    /** @var \Drupal\embargo\IpRangeInterface[] $ip_range_entities */
+    $ip_range_entities = $this->entityTypeManager->getStorage('embargo_ip_range')
+      ->getApplicableIpRanges($this->requestStack->getCurrentRequest()->getClientIp());
+    $info['ip_ranges'] = $ip_range_entities;
+
     $query->addCacheContexts([
       // Caching by groups of ranges instead of individually should promote
       // cacheability.
@@ -283,9 +283,12 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
     // Embargo dates deal with granularity to the day.
     $query->mergeCacheMaxAge(24 * 3600);
 
-    /** @var \Drupal\Core\Entity\EntityTypeInterface $embargo_type */
-    $embargo_type = $this->entityTypeManager->getDefinition('embargo');
-    $query->addCacheTags($embargo_type->getListCacheTags());
+    $types = ['embargo', 'embargo_ip_range'];
+    foreach ($types as $type) {
+      /** @var \Drupal\Core\Entity\EntityTypeInterface $entity_type */
+      $entity_type = $this->entityTypeManager->getDefinition($type);
+      $query->addCacheTags($entity_type->getListCacheTags());
+    }
 
     $query->addTag('embargo_join_processor');
     $query->setOption('embargo_join_processor', $info);
