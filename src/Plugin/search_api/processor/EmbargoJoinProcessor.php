@@ -205,8 +205,8 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
   protected function doAddEmbargoField(ItemInterface $item, EntityInterface $entity) : void {
     assert($entity instanceof EmbargoInterface);
     $paths = match ($entity->getEmbargoType()) {
-      EmbargoInterface::EMBARGO_TYPE_FILE => ['embargo_node__file', 'embargo_node__node'],
-      EmbargoInterface::EMBARGO_TYPE_NODE => ['embargo_node__node'],
+      EmbargoInterface::EMBARGO_TYPE_FILE => ['embargo_node__file'],
+      EmbargoInterface::EMBARGO_TYPE_NODE => ['embargo_node__node', 'embargo_node__file'],
     };
 
     $fields = $item->getFields(FALSE);
@@ -274,8 +274,18 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
     }
 
     $query->addCacheContexts([
+      // Caching by groups of ranges instead of individually should promote
+      // cacheability.
+      'ip.embargo_range',
+      // Exemptable users, so need to deal with them.
       'user',
     ]);
+    // Embargo dates deal with granularity to the day.
+    $query->mergeCacheMaxAge(24 * 3600);
+
+    /** @var \Drupal\Core\Entity\EntityTypeInterface $embargo_type */
+    $embargo_type = $this->entityTypeManager->getDefinition('embargo');
+    $query->addCacheTags($embargo_type->getListCacheTags());
 
     $query->addTag('embargo_join_processor');
     $query->setOption('embargo_join_processor', $info);

@@ -71,16 +71,22 @@ class EmbargoJoinProcessorEventSubscriber implements EventSubscriberInterface, C
     $backend = $search_api_query->getIndex()->getServerInstance()->getBackend();
     assert($backend instanceof SolrBackendInterface);
     $map = $backend->getSolrFieldNames($search_api_query->getIndex());
-    $get_field_name = function (?string $datasource_id, string $property_path) use ($search_api_query, $map) {
-      $fields = $this->fieldsHelper->filterForPropertyPath(
-        $search_api_query->getIndex()->getFieldsByDatasource($datasource_id),
-        $datasource_id,
-        $property_path,
-      );
-      /** @var \Drupal\search_api\Item\FieldInterface $field */
-      $field = reset($fields);
+    $memoized_map = [];
+    $get_field_name = function (?string $datasource_id, string $property_path) use ($search_api_query, $map, &$memoized_map) {
+      $key = "{$datasource_id}__{$property_path}";
+      if (!isset($memoized_map[$key])) {
+        $fields = $this->fieldsHelper->filterForPropertyPath(
+          $search_api_query->getIndex()->getFieldsByDatasource($datasource_id),
+          $datasource_id,
+          $property_path,
+        );
+        /** @var \Drupal\search_api\Item\FieldInterface $field */
+        $field = reset($fields);
 
-      return $map[$field->getFieldIdentifier()];
+        $memoized_map[$key] = $map[$field->getFieldIdentifier()];
+      }
+
+      return $memoized_map[$key];
     };
 
     $solarium_query = $event->getSolariumQuery();
