@@ -4,18 +4,15 @@ namespace Drupal\embargo\Plugin\search_api\processor;
 
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Cache\RefinableCacheableDependencyInterface;
-use Drupal\Core\Database\Connection;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\embargo\EmbargoInterface;
 use Drupal\embargo\Plugin\search_api\processor\Property\ListableEntityProcessorProperty;
-use Drupal\islandora_hierarchical_access\LUTGeneratorInterface;
 use Drupal\search_api\Datasource\DatasourceInterface;
 use Drupal\search_api\Item\ItemInterface;
 use Drupal\search_api\Processor\ProcessorPluginBase;
-use Drupal\search_api\Processor\ProcessorProperty;
 use Drupal\search_api\Query\ConditionGroupInterface;
 use Drupal\search_api\Query\QueryInterface;
 use Drupal\search_api\SearchApiException;

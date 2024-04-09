@@ -55,8 +55,18 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
    */
   protected Connection $database;
 
+  /**
+   * Drupal's entity type manager service.
+   *
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   */
   protected EntityTypeManagerInterface $entityTypeManager;
 
+  /**
+   * Symfony's request stack info.
+   *
+   * @var \Symfony\Component\HttpFoundation\RequestStack
+   */
   protected RequestStack $requestStack;
 
   /**
