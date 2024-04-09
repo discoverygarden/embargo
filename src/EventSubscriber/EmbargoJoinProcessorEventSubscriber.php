@@ -70,9 +70,11 @@ class EmbargoJoinProcessorEventSubscriber implements EventSubscriberInterface, C
       return;
     }
 
-    $query_info = $search_api_query->getOption('embargo_join_processor');
-    /** @var \Drupal\embargo\IpRangeInterface[] $ip_range_entities */
-    $ip_range_entities = $query_info['ip_ranges'];
+    $queries = $search_api_query->getOption('embargo_join_processor__queries', []);
+
+    if (!$queries) {
+      return;
+    }
 
     $backend = $search_api_query->getIndex()->getServerInstance()->getBackend();
     assert($backend instanceof SolrBackendInterface);
@@ -99,7 +101,10 @@ class EmbargoJoinProcessorEventSubscriber implements EventSubscriberInterface, C
     assert($solarium_query instanceof SolariumSelectQuery);
     $helper = $solarium_query->getHelper();
 
-    foreach ($query_info['queries'] as $type => $info) {
+    /** @var \Drupal\embargo\IpRangeInterface[] $ip_range_entities */
+    $ip_range_entities = $search_api_query->getOption('embargo_join_processor__ip_ranges', []);
+
+    foreach ($queries as $type => $info) {
       $solarium_query->createFilterQuery([
         'key' => "embargo_join:{$type}",
         'query' => strtr(

@@ -247,31 +247,28 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
       return;
     }
 
-    $info = [
-      'queries' => [],
-    ];
+    $queries = [];
 
     if (in_array('entity:node', $this->index->getDatasourceIds())) {
-      $info['queries']['node'] = [
+      $queries['node'] = [
         'data sources' => ['entity:node'],
         'path' => 'embargo_node__node',
       ];
     }
     if ($intersection = array_intersect($this->index->getDatasourceIds(), ['entity:media', 'entity:file'])) {
-      $info['queries']['file'] = [
+      $queries['file'] = [
         'data sources' => $intersection,
         'path' => 'embargo_node__file',
       ];
     }
 
-    if (!$info['queries']) {
+    if (!$queries) {
       return;
     }
 
     /** @var \Drupal\embargo\IpRangeInterface[] $ip_range_entities */
     $ip_range_entities = $this->entityTypeManager->getStorage('embargo_ip_range')
       ->getApplicableIpRanges($this->requestStack->getCurrentRequest()->getClientIp());
-    $info['ip_ranges'] = $ip_range_entities;
 
     $query->addCacheContexts([
       // Caching by groups of ranges instead of individually should promote
@@ -291,7 +288,8 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
     }
 
     $query->addTag('embargo_join_processor');
-    $query->setOption('embargo_join_processor', $info);
+    $query->setOption('embargo_join_processor__ip_ranges', $ip_range_entities);
+    $query->setOption('embargo_join_processor__queries', $queries);
   }
 
 }
