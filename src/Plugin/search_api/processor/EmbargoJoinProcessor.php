@@ -5,8 +5,10 @@ namespace Drupal\embargo\Plugin\search_api\processor;
 use Drupal\Core\Cache\RefinableCacheableDependencyInterface;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountProxyInterface;
+use Drupal\embargo\EmbargoInterface;
 use Drupal\islandora_hierarchical_access\LUTGeneratorInterface;
 use Drupal\search_api\Datasource\DatasourceInterface;
 use Drupal\search_api\IndexInterface;
@@ -16,6 +18,7 @@ use Drupal\search_api\Processor\ProcessorProperty;
 use Drupal\search_api\Query\QueryInterface;
 use Drupal\search_api\SearchApiException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * A search_api processor to add embargo related info.
@@ -23,8 +26,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * @SearchApiProcessor(
  *   id = "embargo_join_processor",
  *   label = @Translation("Embargo access, join-wise"),
- *   description = @Translation("Add information regarding embargo access constraints."),
- *   stages = {
+ *   description = @Translation("Add information regarding embargo access
+ *   constraints."), stages = {
  *     "add_properties" = 20,
  *     "pre_index_save" = 20,
  *     "preprocess_query" = 20,
@@ -36,6 +39,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFactoryPluginInterface {
 
   const ENTITY_TYPES = ['file', 'media', 'node'];
+  const ALL_ENTITY_TYPES = ['file', 'media', 'node', 'embargo'];
 
   /**
    * The currently logged-in user.
@@ -51,6 +55,10 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
    */
   protected Connection $database;
 
+  protected EntityTypeManagerInterface $entityTypeManager;
+
+  protected RequestStack $requestStack;
+
   /**
    * {@inheritdoc}
    */
@@ -59,6 +67,8 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
 
     $instance->currentUser = $container->get('current_user');
     $instance->database = $container->get('database');
+    $instance->entityTypeManager = $container->get('entity_type.manager');
+    $instance->requestStack = $container->get('request_stack');
 
     return $instance;
   }
@@ -67,7 +77,14 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
    * {@inheritDoc}
    */
   public static function supportsIndex(IndexInterface $index) {
-    return parent::supportsIndex($index) && in_array('entity:embargo', $index->getDatasourceIds());
+    return parent::supportsIndex($index) &&
+      in_array('entity:embargo', $index->getDatasourceIds()) &&
+      array_intersect(
+        $index->getDatasourceIds(),
+        array_map(function (string $type) {
+          return "entity:{$type}";
+        }, static::ENTITY_TYPES)
+      );
   }
 
   /**
@@ -77,9 +94,22 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
     $properties = [];
 
     if ($datasource === NULL) {
+      // Represent the node(s) to which a general content entity is associated.
       $properties['embargo_node'] = new ProcessorProperty([
         'processor_id' => $this->getPluginId(),
         'is_list' => TRUE,
+        'is_computed' => TRUE,
+      ]);
+      // Represent the node of which a "file" embargo is associated.
+      $properties['embargo_node__file'] = new ProcessorProperty([
+        'processor_id' => $this->getPluginId(),
+        'is_list' => FALSE,
+        'is_computed' => TRUE,
+      ]);
+      // Represent the node of which a "node" embargo is associated.
+      $properties['embargo_node__node'] = new ProcessorProperty([
+        'processor_id' => $this->getPluginId(),
+        'is_list' => FALSE,
         'is_computed' => TRUE,
       ]);
     }
@@ -95,7 +125,7 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
    * @see \Drupal\search_api\Plugin\search_api\processor\ReverseEntityReferences::addFieldValues()
    */
   public function addFieldValues(ItemInterface $item) : void {
-    if (!in_array($item->getDatasource()->getEntityTypeId(), static::ENTITY_TYPES)) {
+    if (!in_array($item->getDatasource()->getEntityTypeId(), static::ALL_ENTITY_TYPES)) {
       return;
     }
     try {
@@ -108,6 +138,24 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
       return;
     }
 
+    if (in_array($item->getDatasource()->getEntityTypeId(), static::ENTITY_TYPES)) {
+      $this->doAddNodeField($item, $entity);
+    }
+    else {
+      $this->doAddEmbargoField($item, $entity);
+    }
+
+  }
+
+  /**
+   * Helper; build out field(s) for general content entities.
+   *
+   * @param \Drupal\search_api\Item\ItemInterface $item
+   *   The item being indexed.
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   The content entity of the item being indexed.
+   */
+  protected function doAddNodeField(ItemInterface $item, EntityInterface $entity) : void {
     $embargo_node_fields = $this->getFieldsHelper()->filterForPropertyPath($item->getFields(FALSE), NULL, 'embargo_node');
     if ($embargo_node_fields) {
       // Identify the nodes.
@@ -134,7 +182,30 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
         }
       }
     }
+  }
 
+  /**
+   * Helper; build out field(s) for embargo entities, specifically.
+   *
+   * @param \Drupal\search_api\Item\ItemInterface $item
+   *   The item being indexed.
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   The content entity of the item being indexed.
+   */
+  protected function doAddEmbargoField(ItemInterface $item, EntityInterface $entity) : void {
+    assert($entity instanceof EmbargoInterface);
+    $paths = match ($entity->getEmbargoType()) {
+      EmbargoInterface::EMBARGO_TYPE_FILE => ['embargo_node__file', 'embargo_node__node'],
+      EmbargoInterface::EMBARGO_TYPE_NODE => ['embargo_node__node'],
+    };
+
+    $fields = $item->getFields(FALSE);
+    foreach ($paths as $path) {
+      $target_fields = $this->getFieldsHelper()->filterForPropertyPath($fields, NULL, $path);
+      foreach ($target_fields as $target_field) {
+        $target_field->addValue($entity->getEmbargoedNode()->id());
+      }
+    }
   }
 
   /**
@@ -144,6 +215,8 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
     parent::preIndexSave();
 
     $this->ensureField(NULL, 'embargo_node', 'integer');
+    $this->ensureField(NULL, 'embargo_node__file', 'integer');
+    $this->ensureField(NULL, 'embargo_node__node', 'integer');
 
     $this->ensureField('entity:embargo', 'id', 'integer');
     $this->ensureField('entity:embargo', 'embargoed_node:entity:nid', 'integer');
@@ -164,7 +237,34 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
       return;
     }
 
+    /** @var \Drupal\embargo\IpRangeInterface[] $ip_range_entities */
+    $ip_range_entities = $this->entityTypeManager->getStorage('embargo_ip_range')
+      ->getApplicableIpRanges($this->requestStack->getCurrentRequest()->getClientIp());
+
+    $info = [
+      'ip_ranges' => $ip_range_entities,
+      'queries' => [],
+    ];
+
+    if (in_array('entity:node', $this->index->getDatasourceIds())) {
+      $info['queries']['node'] = [
+        'data sources' => ['entity:node'],
+        'path' => 'embargo_node__node',
+      ];
+    }
+    if ($intersection = array_intersect($this->index->getDatasourceIds(), ['entity:media', 'entity:file'])) {
+      $info['queries']['file'] = [
+        'data sources' => $intersection,
+        'path' => 'embargo_node__file',
+      ];
+    }
+
+    if (!$info['queries']) {
+      return;
+    }
+
     $query->addTag('embargo_join_processor');
+    $query->setOption('embargo_join_processor', $info);
   }
 
 }
