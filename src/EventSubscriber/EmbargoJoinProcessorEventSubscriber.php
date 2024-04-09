@@ -47,9 +47,15 @@ class EmbargoJoinProcessorEventSubscriber implements EventSubscriberInterface, C
    * {@inheritDoc}
    */
   public static function getSubscribedEvents() {
-    return [
-      SearchApiSolrEvents::PRE_QUERY => 'preQuery',
-    ];
+    $events = [];
+
+    if (class_exists(SearchApiSolrEvents::class)) {
+      $events += [
+        SearchApiSolrEvents::PRE_QUERY => 'preQuery',
+      ];
+    }
+
+    return $events;
   }
 
   /**
