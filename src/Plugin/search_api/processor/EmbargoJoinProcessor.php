@@ -263,6 +263,10 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
       return;
     }
 
+    $query->addCacheContexts([
+      'user',
+    ]);
+
     $query->addTag('embargo_join_processor');
     $query->setOption('embargo_join_processor', $info);
   }

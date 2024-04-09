@@ -50,6 +50,43 @@ class SearchApiTracker implements ContainerInjectionInterface {
   }
 
   /**
+   * Memoize if we found an index requiring our index maintenance.
+   *
+   * @var bool
+   */
+  protected bool $isProcessorEnabled;
+
+  /**
+   * Helper; determine if our "embargo_processor" processor is enabled.
+   *
+   * If _not_ enabled, we do not have to perform the index maintenance in this
+   * service.
+   *
+   * @return bool
+   *   TRUE if the "embargo_processor" processor is enabled on an index;
+   *   otherwise, FALSE.
+   */
+  protected function isProcessorEnabled() : bool {
+    if (!isset($this->isProcessorEnabled)) {
+      $this->isProcessorEnabled = FALSE;
+      if (!$this->moduleHandler->moduleExists('search_api')) {
+        return $this->isProcessorEnabled;
+      }
+      /** @var \Drupal\search_api\IndexInterface[] $indexes */
+      $indexes = $this->entityTypeManager->getStorage('search_api_index')
+        ->loadMultiple();
+      foreach ($indexes as $index) {
+        if ($index->isValidProcessor('embargo_processor')) {
+          $this->isProcessorEnabled = TRUE;
+          break;
+        }
+      }
+    }
+
+    return $this->isProcessorEnabled;
+  }
+
+  /**
    * Track the given entity (and related entities) for indexing.
    *
    * @param \Drupal\Core\Entity\EntityInterface $entity
@@ -57,7 +94,7 @@ class SearchApiTracker implements ContainerInjectionInterface {
    */
   public function track(EntityInterface $entity) : void {
     assert($entity instanceof EmbargoInterface);
-    if (!$this->moduleHandler->moduleExists('search_api')) {
+    if (!$this->isProcessorEnabled()) {
       return;
     }
 
@@ -84,7 +121,7 @@ class SearchApiTracker implements ContainerInjectionInterface {
    *   The entity to track.
    */
   public function doTrack(ContentEntityInterface $entity) : void {
-    if (!$this->moduleHandler->moduleExists('search_api')) {
+    if (!$this->isProcessorEnabled()) {
       return;
     }
     $this->trackingManager->trackEntityChange($entity);
@@ -144,6 +181,9 @@ class SearchApiTracker implements ContainerInjectionInterface {
    *   TRUE if relevant; otherwise, FALSE.
    */
   public function isMediaRelevant(MediaInterface $media) : bool {
+    if (!$this->isProcessorEnabled()) {
+      return FALSE;
+    }
     // No `field_media_of`, so unrelated to IHA LUT.
     if (!$media->hasField(IslandoraUtils::MEDIA_OF_FIELD)) {
       return FALSE;

@@ -5,7 +5,6 @@ namespace Drupal\embargo\EventSubscriber;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\search_api\Query\QueryInterface;
 use Drupal\search_api\Utility\FieldsHelperInterface;
 use Drupal\search_api_solr\Event\PreQueryEvent;
 use Drupal\search_api_solr\Event\SearchApiSolrEvents;
@@ -60,7 +59,6 @@ class EmbargoJoinProcessorEventSubscriber implements EventSubscriberInterface, C
    *   The event to which to respond.
    */
   public function preQuery(PreQueryEvent $event) : void {
-    dsm('asdf');
     $search_api_query = $event->getSearchApiQuery();
     if (!$search_api_query->hasTag('embargo_join_processor')) {
       return;
@@ -145,31 +143,6 @@ class EmbargoJoinProcessorEventSubscriber implements EventSubscriberInterface, C
         ),
       ])->addTag("embargo_join_processor:{$type}");
     }
-
-    // {!tag=embargo:entity:media,embargo_schedule,embargo:entity:node,embargo_processor,embargo_access}
-    // (
-    //   +(
-    //     (*:* -itm_id_1:[* TO *])
-    //     (
-    //       +(*:* -itm_expiration_type_1:"0")
-    //       +itm_expiration_type_1:"1"
-    //       +dm_expiration_date_1:[* TO "2024-04-05T00:00:00Z"]
-    //       +(*:* -dm_expiration_date_1:["2024-04-06T00:00:00Z" TO "6596-12-04T00:00:00Z"])
-    //     )
-    //     itm_id_2:"1"
-    //   )
-    //   +(
-    //     (*:* -itm_id_3:[* TO *])
-    //     (
-    //       +(*:* -itm_expiration_type_2:"0")
-    //       +itm_expiration_type_2:"1"
-    //       +dm_expiration_date_2:[* TO "2024-04-05T00:00:00Z"]
-    //       +(*:* -dm_expiration_date_2:["2024-04-06T00:00:00Z" TO "6596-12-04T00:00:00Z"])
-    //     )
-    //     itm_id_4:"1"
-    //   )
-    // )
-
 
   }
 
