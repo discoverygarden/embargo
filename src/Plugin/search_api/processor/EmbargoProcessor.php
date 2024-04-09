@@ -137,8 +137,17 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
     /** @var \Drupal\embargo\EmbargoStorageInterface $embargo_storage */
     $embargo_storage = $this->entityTypeManager->getStorage('embargo');
     $embargoes = $embargo_storage->getApplicableEmbargoes($entity);
+    $relevant_embargoes = array_filter(
+      $embargoes,
+      function (EmbargoInterface $embargo) use ($entity) {
+        return in_array($embargo->getEmbargoType(), match ($entity->getEntityTypeId()) {
+          'file', 'media' => [EmbargoInterface::EMBARGO_TYPE_FILE, EmbargoInterface::EMBARGO_TYPE_NODE],
+          'node' => [EmbargoInterface::EMBARGO_TYPE_NODE],
+        });
+      }
+    );
 
-    foreach ($embargoes as $embargo) {
+    foreach ($relevant_embargoes as $embargo) {
       $this->getFieldsHelper()->extractFields($embargo->getTypedData(), $to_extract);
     }
 
