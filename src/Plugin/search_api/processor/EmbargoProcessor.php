@@ -25,9 +25,8 @@ use Symfony\Component\HttpFoundation\RequestStack;
  *
  * @SearchApiProcessor(
  *   id = "embargo_processor",
- *   label = @Translation("Embargo access"),
- *   description = @Translation("Add information regarding embargo access
- *   constraints."),
+ *   label = @Translation("Embargo access (deprecated)"),
+ *   description = @Translation("Add information regarding embargo access constraints."),
  *   stages = {
  *     "add_properties" = 20,
  *     "pre_index_save" = 20,

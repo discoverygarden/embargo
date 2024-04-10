@@ -21,9 +21,9 @@ trait EmbargoStorageTrait {
   /**
    * The current request.
    *
-   * @var \Symfony\Component\HttpFoundation\Request
+   * @var \Symfony\Component\HttpFoundation\Request|null
    */
-  protected Request $request;
+  protected ?Request $request;
 
   /**
    * The current user.
@@ -95,13 +95,13 @@ trait EmbargoStorageTrait {
   /**
    * The request visible to the trait.
    *
-   * @param \Symfony\Component\HttpFoundation\Request $request
+   * @param \Symfony\Component\HttpFoundation\Request|null $request
    *   The request with which to evaluate.
    *
    * @return \Drupal\embargo\EmbargoStorageInterface|\Drupal\embargo\EmbargoStorageTrait
    *   Fluent interface; the current object.
    */
-  protected function setRequest(Request $request) : self {
+  protected function setRequest(?Request $request) : self {
     $this->request = $request;
     return $this;
   }

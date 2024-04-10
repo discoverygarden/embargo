@@ -26,8 +26,8 @@ use Symfony\Component\HttpFoundation\RequestStack;
  * @SearchApiProcessor(
  *   id = "embargo_join_processor",
  *   label = @Translation("Embargo access, join-wise"),
- *   description = @Translation("Add information regarding embargo access
- *   constraints."), stages = {
+ *   description = @Translation("Add information regarding embargo access constraints."),
+ *   stages = {
  *     "add_properties" = 20,
  *     "pre_index_save" = 20,
  *     "preprocess_query" = 20,
@@ -252,13 +252,15 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
     if (in_array('entity:node', $this->index->getDatasourceIds())) {
       $queries['node'] = [
         'data sources' => ['entity:node'],
-        'path' => 'embargo_node__node',
+        'embargo path' => 'embargo_node__node',
+        'node path' => 'embargo_node',
       ];
     }
     if ($intersection = array_intersect($this->index->getDatasourceIds(), ['entity:media', 'entity:file'])) {
       $queries['file'] = [
         'data sources' => $intersection,
-        'path' => 'embargo_node__file',
+        'embargo path' => 'embargo_node__file',
+        'node path' => 'embargo_node',
       ];
     }
 
