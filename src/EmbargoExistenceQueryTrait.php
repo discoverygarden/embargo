@@ -81,6 +81,49 @@ trait EmbargoExistenceQueryTrait {
   }
 
   /**
+   * Build out condition for matching embargo entities.
+   *
+   * @param \Drupal\Core\Database\Query\SelectInterface $query
+   *   The query in which the condition is to be attached.
+   *
+   * @return \Drupal\Core\Database\Query\ConditionInterface
+   *   The condition to attach.
+   */
+  protected function buildInclusionBaseCondition(SelectInterface $query) : ConditionInterface {
+    $condition = $query->orConditionGroup();
+
+    $embargo_alias = $query->getMetaData('embargo_alias');
+    $target_aliases = $query->getMetaData('embargo_target_aliases');
+
+    $condition->where(strtr('!field IN (!targets)', [
+      '!field' => "{$embargo_alias}.embargoed_node",
+      '!targets' => implode(', ', $target_aliases),
+    ]));
+
+    return $condition;
+  }
+
+  /**
+   * Build out condition for matching overriding embargo entities.
+   *
+   * @param \Drupal\Core\Database\Query\SelectInterface $query
+   *   The query in which the condition is to be attached.
+   *
+   * @return \Drupal\Core\Database\Query\ConditionInterface
+   *   The condition to attach.
+   */
+  protected function buildExclusionBaseCondition(SelectInterface $query) : ConditionInterface {
+    $condition = $query->orConditionGroup();
+
+    $embargo_alias = $query->getMetaData('embargo_alias');
+    $unexpired_alias = $query->getMetaData('embargo_unexpired_alias');
+
+    $condition->where("{$unexpired_alias}.embargoed_node = {$embargo_alias}.embargoed_node");
+
+    return $condition;
+  }
+
+  /**
    * Get query for negative assertion.
    *
    * @param array $target_aliases
@@ -95,11 +138,10 @@ trait EmbargoExistenceQueryTrait {
     $embargo_alias = 'embargo_null';
     $query = $this->database->select('embargo', $embargo_alias);
     $query->addExpression(1, 'embargo_null_e');
+    $query->addMetaData('embargo_alias', $embargo_alias);
+    $query->addMetaData('embargo_target_aliases', $target_aliases);
 
-    $query->where(strtr('!field IN (!targets)', [
-      '!field' => "{$embargo_alias}.embargoed_node",
-      '!targets' => implode(', ', $target_aliases),
-    ]));
+    $query->condition($this->buildInclusionBaseCondition($query));
     $query->condition("{$embargo_alias}.embargo_type", $embargo_types, 'IN');
 
     return $query;
@@ -123,15 +165,12 @@ trait EmbargoExistenceQueryTrait {
     $embargo_existence->addExpression(1, 'embargo_allowed');
 
     $embargo_existence->addMetaData('embargo_alias', $embargo_alias);
+    $embargo_existence->addMetaData('embargo_target_aliases', $target_aliases);
 
-    $replacements = [
-      '!field' => "{$embargo_alias}.embargoed_node",
-      '!targets' => implode(', ', $target_aliases),
-    ];
     $embargo_existence->condition(
       $embargo_existence->orConditionGroup()
         ->condition($existence_condition = $embargo_existence->andConditionGroup()
-          ->where(strtr('!field IN (!targets)', $replacements))
+          ->condition($this->buildInclusionBaseCondition($embargo_existence))
           ->condition($embargo_or = $embargo_existence->orConditionGroup())
       )
     );
@@ -159,7 +198,10 @@ trait EmbargoExistenceQueryTrait {
     $current_date = $this->dateFormatter->format($this->time->getRequestTime(), 'custom', DateTimeItemInterface::DATE_STORAGE_FORMAT);
     // No indefinite embargoes or embargoes expiring in the future.
     $unexpired_embargo_subquery = $this->database->select('embargo', 'ue')
-      ->where("ue.embargoed_node = {$embargo_alias}.embargoed_node")
+      ->addMetaData('embargo_alias', $embargo_alias)
+      ->addMetaData('embargo_target_aliases', $target_aliases)
+      ->addMetaData('embargo_unexpired_alias', 'ue');
+    $unexpired_embargo_subquery->condition($this->buildExclusionBaseCondition($unexpired_embargo_subquery))
       ->condition('ue.embargo_type', $embargo_types, 'IN');
     $unexpired_embargo_subquery->addExpression(1, 'ueee');
     $unexpired_embargo_subquery->condition($unexpired_embargo_subquery->orConditionGroup()
