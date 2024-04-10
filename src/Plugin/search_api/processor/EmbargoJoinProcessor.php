@@ -28,9 +28,9 @@ use Symfony\Component\HttpFoundation\RequestStack;
  *   label = @Translation("Embargo access, join-wise"),
  *   description = @Translation("Add information regarding embargo access constraints."),
  *   stages = {
- *     "add_properties" = 20,
- *     "pre_index_save" = 20,
- *     "preprocess_query" = 20,
+ *     "add_properties" = 0,
+ *     "pre_index_save" = 0,
+ *     "preprocess_query" = 0,
  *   },
  *   locked = false,
  *   hidden = false,
@@ -40,6 +40,10 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
 
   const ENTITY_TYPES = ['file', 'media', 'node'];
   const ALL_ENTITY_TYPES = ['file', 'media', 'node', 'embargo'];
+
+  const NODE_FIELD = 'embargo__node';
+  const EMBARGO_FIELD_NODE = 'embargo__node__node';
+  const EMBARGO_FIELD_FILE = 'embargo__node__file';
 
   /**
    * The currently logged-in user.
@@ -105,19 +109,19 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
 
     if ($datasource === NULL) {
       // Represent the node(s) to which a general content entity is associated.
-      $properties['embargo_node'] = new ProcessorProperty([
+      $properties[static::NODE_FIELD] = new ProcessorProperty([
         'processor_id' => $this->getPluginId(),
         'is_list' => TRUE,
         'is_computed' => TRUE,
       ]);
       // Represent the node of which a "file" embargo is associated.
-      $properties['embargo_node__file'] = new ProcessorProperty([
+      $properties[static::EMBARGO_FIELD_FILE] = new ProcessorProperty([
         'processor_id' => $this->getPluginId(),
         'is_list' => FALSE,
         'is_computed' => TRUE,
       ]);
       // Represent the node of which a "node" embargo is associated.
-      $properties['embargo_node__node'] = new ProcessorProperty([
+      $properties[static::EMBARGO_FIELD_NODE] = new ProcessorProperty([
         'processor_id' => $this->getPluginId(),
         'is_list' => FALSE,
         'is_computed' => TRUE,
@@ -158,6 +162,32 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
   }
 
   /**
+   * Find the nodes related to the given entity.
+   *
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   The entity in question.
+   *
+   * @return string[]|int[]
+   *   The IDs of the related nodes.
+   */
+  protected function findRelatedNodes(EntityInterface $entity) : array {
+    if ($entity->getEntityTypeId() === 'node') {
+      return [$entity->id()];
+    }
+    else {
+      $column = match ($entity->getEntityTypeId()) {
+        'media' => 'mid',
+        'file' => 'fid',
+      };
+      return $this->database->select(LUTGeneratorInterface::TABLE_NAME, 'lut')
+        ->fields('lut', ['nid'])
+        ->condition("lut.{$column}", $entity->id())
+        ->execute()
+        ->fetchCol();
+    }
+  }
+
+  /**
    * Helper; build out field(s) for general content entities.
    *
    * @param \Drupal\search_api\Item\ItemInterface $item
@@ -166,25 +196,9 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
    *   The content entity of the item being indexed.
    */
   protected function doAddNodeField(ItemInterface $item, EntityInterface $entity) : void {
-    $embargo_node_fields = $this->getFieldsHelper()->filterForPropertyPath($item->getFields(FALSE), NULL, 'embargo_node');
+    $embargo_node_fields = $this->getFieldsHelper()->filterForPropertyPath($item->getFields(FALSE), NULL, static::NODE_FIELD);
     if ($embargo_node_fields) {
-      // Identify the nodes.
-      if ($entity->getEntityTypeId() === 'node') {
-        $nodes = [$entity->id()];
-      }
-      else {
-        $column = match ($entity->getEntityTypeId()) {
-          'media' => 'mid',
-          'file' => 'fid',
-        };
-        $nodes = array_unique(
-          $this->database->select(LUTGeneratorInterface::TABLE_NAME, 'lut')
-            ->fields('lut', ['nid'])
-            ->condition("lut.{$column}", $entity->id())
-            ->execute()
-            ->fetchCol()
-        );
-      }
+      $nodes = array_unique($this->findRelatedNodes($entity));
 
       foreach ($embargo_node_fields as $field) {
         foreach ($nodes as $node_id) {
@@ -205,8 +219,8 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
   protected function doAddEmbargoField(ItemInterface $item, EntityInterface $entity) : void {
     assert($entity instanceof EmbargoInterface);
     $paths = match ($entity->getEmbargoType()) {
-      EmbargoInterface::EMBARGO_TYPE_FILE => ['embargo_node__file'],
-      EmbargoInterface::EMBARGO_TYPE_NODE => ['embargo_node__node', 'embargo_node__file'],
+      EmbargoInterface::EMBARGO_TYPE_FILE => [static::EMBARGO_FIELD_FILE],
+      EmbargoInterface::EMBARGO_TYPE_NODE => [static::EMBARGO_FIELD_NODE, static::EMBARGO_FIELD_FILE],
     };
 
     $fields = $item->getFields(FALSE);
@@ -222,11 +236,9 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
    * {@inheritDoc}
    */
   public function preIndexSave() : void {
-    parent::preIndexSave();
-
-    $this->ensureField(NULL, 'embargo_node', 'integer');
-    $this->ensureField(NULL, 'embargo_node__file', 'integer');
-    $this->ensureField(NULL, 'embargo_node__node', 'integer');
+    $this->ensureField(NULL, static::NODE_FIELD, 'integer');
+    $this->ensureField(NULL, static::EMBARGO_FIELD_FILE, 'integer');
+    $this->ensureField(NULL, static::EMBARGO_FIELD_NODE, 'integer');
 
     $this->ensureField('entity:embargo', 'id', 'integer');
     $this->ensureField('entity:embargo', 'embargoed_node:entity:nid', 'integer');
@@ -252,15 +264,15 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
     if (in_array('entity:node', $this->index->getDatasourceIds())) {
       $queries['node'] = [
         'data sources' => ['entity:node'],
-        'embargo path' => 'embargo_node__node',
-        'node path' => 'embargo_node',
+        'embargo path' => static::EMBARGO_FIELD_NODE,
+        'node path' => static::NODE_FIELD,
       ];
     }
     if ($intersection = array_intersect($this->index->getDatasourceIds(), ['entity:media', 'entity:file'])) {
       $queries['file'] = [
         'data sources' => $intersection,
-        'embargo path' => 'embargo_node__file',
-        'node path' => 'embargo_node',
+        'embargo path' => static::EMBARGO_FIELD_FILE,
+        'node path' => static::NODE_FIELD,
       ];
     }
 
@@ -282,7 +294,7 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
     // Embargo dates deal with granularity to the day.
     $query->mergeCacheMaxAge(24 * 3600);
 
-    $types = ['embargo', 'embargo_ip_range'];
+    $types = ['embargo', 'embargo_ip_range', 'media', 'file', 'node'];
     foreach ($types as $type) {
       /** @var \Drupal\Core\Entity\EntityTypeInterface $entity_type */
       $entity_type = $this->entityTypeManager->getDefinition($type);
