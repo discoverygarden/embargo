@@ -18,11 +18,12 @@ services:
       - '@entity_type.manager'
       - '@datetime.time'
       - '@date.formatter'
+      - '@event_dispatcher'
   embargo.route_subscriber:
     class: Drupal\embargo\Routing\EmbargoRouteSubscriber
     arguments: ['@entity_type.manager']
     tags:
-      - { name: event_subscriber }
+      - { name: 'event_subscriber' }
   embargo.ip_range_redirect:
     class: '\Drupal\embargo\EventSubscriber\IpRangeRedirect'
     arguments:
@@ -56,4 +57,9 @@ services:
       - '@request_stack'
       - '@entity_type.manager'
     tags:
-      - { name: cache.context }
+      - { name: 'cache.context' }
+  embargo.tagging_event_subscriber:
+    class: Drupal\embargo\EventSubscriber\TaggingEventSubscriber
+    tags:
+      - { name: 'event_subscriber' }
+

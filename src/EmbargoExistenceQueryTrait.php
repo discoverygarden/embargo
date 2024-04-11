@@ -10,6 +10,9 @@ use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\datetime\Plugin\Field\FieldType\DateTimeItemInterface;
+use Drupal\embargo\Event\TagExclusionEvent;
+use Drupal\embargo\Event\TagInclusionEvent;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Helper trait; facilitate filtering of embargoed entities.
@@ -59,6 +62,13 @@ trait EmbargoExistenceQueryTrait {
   protected DateFormatterInterface $dateFormatter;
 
   /**
+   * The event dispatcher service.
+   *
+   * @var \Symfony\Contracts\EventDispatcher\EventDispatcherInterface
+   */
+  protected EventDispatcherInterface $eventDispatcher;
+
+  /**
    * Helper; apply existence checks to a node(-like) table.
    *
    * @param \Drupal\Core\Database\Query\ConditionInterface $existence_condition
@@ -81,6 +91,30 @@ trait EmbargoExistenceQueryTrait {
   }
 
   /**
+   * Set the event dispatcher service.
+   *
+   * @param \Symfony\Contracts\EventDispatcher\EventDispatcherInterface $event_dispatcher
+   *   The event dispatcher service to set.
+   *
+   * @return \Drupal\embargo\EmbargoExistenceQueryTrait|\Drupal\embargo\Access\QueryTagger|\Drupal\embargo\EventSubscriber\IslandoraHierarchicalAccessEventSubscriber
+   *   The current instance; fluent interface.
+   */
+  protected function setEventDispatcher(EventDispatcherInterface $event_dispatcher) : self {
+    $this->eventDispatcher = $event_dispatcher;
+    return $this;
+  }
+
+  /**
+   * Get the event dispatcher service.
+   *
+   * @return \Symfony\Contracts\EventDispatcher\EventDispatcherInterface
+   *   The event dispatcher service.
+   */
+  protected function getEventDispatch() : EventDispatcherInterface {
+    return $this->eventDispatcher ?? \Drupal::service('event_dispatcher');
+  }
+
+  /**
    * Build out condition for matching embargo entities.
    *
    * @param \Drupal\Core\Database\Query\SelectInterface $query
@@ -90,17 +124,9 @@ trait EmbargoExistenceQueryTrait {
    *   The condition to attach.
    */
   protected function buildInclusionBaseCondition(SelectInterface $query) : ConditionInterface {
-    $condition = $query->orConditionGroup();
+    $dispatched_event = $this->getEventDispatch()->dispatch(new TagInclusionEvent($query));
 
-    $embargo_alias = $query->getMetaData('embargo_alias');
-    $target_aliases = $query->getMetaData('embargo_target_aliases');
-
-    $condition->where(strtr('!field IN (!targets)', [
-      '!field' => "{$embargo_alias}.embargoed_node",
-      '!targets' => implode(', ', $target_aliases),
-    ]));
-
-    return $condition;
+    return $dispatched_event->getCondition();
   }
 
   /**
@@ -113,14 +139,9 @@ trait EmbargoExistenceQueryTrait {
    *   The condition to attach.
    */
   protected function buildExclusionBaseCondition(SelectInterface $query) : ConditionInterface {
-    $condition = $query->orConditionGroup();
+    $dispatched_event = $this->getEventDispatch()->dispatch(new TagExclusionEvent($query));
 
-    $embargo_alias = $query->getMetaData('embargo_alias');
-    $unexpired_alias = $query->getMetaData('embargo_unexpired_alias');
-
-    $condition->where("{$unexpired_alias}.embargoed_node = {$embargo_alias}.embargoed_node");
-
-    return $condition;
+    return $dispatched_event->getCondition();
   }
 
   /**
