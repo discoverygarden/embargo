@@ -42,6 +42,9 @@ class TaggingEventSubscriber implements EventSubscriberInterface {
    *   The event being handled.
    */
   public function exclusion(TagExclusionEvent $event) : void {
+    // With traversing a single level of the hierarchy, it makes sense to
+    // constrain to the same node as matched in the "inclusion", instead of
+    // again referencing the other aliased columns dealing with node IDs.
     $event->getCondition()->where("{$event->getUnexpiredAlias()}.embargoed_node = {$event->getEmbargoAlias()}.embargoed_node");
   }
 
