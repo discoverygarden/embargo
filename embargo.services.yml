@@ -62,4 +62,3 @@ services:
     class: Drupal\embargo\EventSubscriber\TaggingEventSubscriber
     tags:
       - { name: 'event_subscriber' }
-
