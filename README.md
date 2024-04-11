@@ -55,9 +55,14 @@ An embargo can be applied to an existing node by clicking the
 `embargoes/node/{node_id}`. From here, an embargo can be applied if it doesn't
 already exist, and existing embargoes can be modified or removed.
 
-## Known Issues
+## Known Issues/FAQ
 
-- Embargoed items show up in search results: Enable one of our `search_api` processors to handle applying embargo restrictions.
+- Embargoed items show up in search results
+  - Enable one of our `search_api` processors to handle applying embargo restrictions.
+- "Embargo access, join-wise" does not show up as an available processor
+  - Ensure embargo entities are being indexed in the given index.
+  - Ensure that eligible node/media/files entities are being indexed in the
+    given index.
 
 ## Troubleshooting/Issues
 
