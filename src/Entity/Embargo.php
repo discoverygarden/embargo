@@ -32,6 +32,7 @@ use Drupal\user\UserInterface;
  *   handlers = {
  *     "storage" = "Drupal\embargo\EmbargoStorage",
  *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
+ *     "views_data" = "Drupal\embargo\EmbargoViewsData",
  *     "list_builder" = "Drupal\embargo\EmbargoListBuilder",
  *     "form" = {
  *       "add" = "Drupal\embargo\Form\EmbargoForm",

@@ -29,6 +29,7 @@ use Symfony\Component\HttpFoundation\IpUtils;
  *   handlers = {
  *     "storage" = "Drupal\embargo\IpRangeStorage",
  *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
+ *     "views_data" = "Drupal\embargo\EmbargoIpRangeViewsData",
  *     "list_builder" = "Drupal\embargo\EmbargoListBuilder",
  *     "form" = {
  *       "add" = "Drupal\embargo\Form\IpRangeForm",
