@@ -151,7 +151,9 @@ class EmbargoNotificationBlock extends BlockBase implements ContainerFactoryPlug
       $expired = $embargo->expiresBefore($now);
       $exempt_user = $embargo->isUserExempt($this->user);
       $exempt_ip = $embargo->ipIsExempt($ip);
+
       $embargoes[$id] = [
+        'actual' => $embargo,
         'indefinite' => $embargo->getExpirationType() === EmbargoInterface::EXPIRATION_TYPE_INDEFINITE,
         'expired' => $expired,
         'exempt_user' => $exempt_user,
@@ -169,6 +171,7 @@ class EmbargoNotificationBlock extends BlockBase implements ContainerFactoryPlug
         'additional_emails' => $embargo->additional_emails->view('default'),
       ];
     }
+
     $build = [
       '#theme' => 'embargo_notification',
       '#message' => $this->t($this->notificationMessage, ['@contact' => $this->adminMail]), // phpcs:ignore
@@ -202,7 +205,7 @@ class EmbargoNotificationBlock extends BlockBase implements ContainerFactoryPlug
    */
   public function getCacheContexts() {
     // Ensure that with every new node/route, this block will be rebuilt.
-    return Cache::mergeContexts(parent::getCacheContexts(), ['route']);
+    return Cache::mergeContexts(parent::getCacheContexts(), ['route', 'url']);
   }
 
 }
