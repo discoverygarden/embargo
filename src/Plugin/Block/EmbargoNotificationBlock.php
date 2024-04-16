@@ -29,9 +29,9 @@ class EmbargoNotificationBlock extends BlockBase implements ContainerFactoryPlug
   /**
    * The admin email address.
    *
-   * @var string
+   * @var string|null
    */
-  protected string $adminMail;
+  protected ?string $adminMail;
 
   /**
    * The notification message.
