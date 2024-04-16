@@ -9,6 +9,7 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\Routing\ResettableStackedRouteMatchInterface;
+use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\embargo\EmbargoInterface;
 use Drupal\node\NodeInterface;
@@ -57,9 +58,9 @@ class EmbargoNotificationBlock extends BlockBase implements ContainerFactoryPlug
   /**
    * The current user.
    *
-   * @var \Drupal\Core\Session\AccountProxyInterface
+   * @var \Drupal\Core\Session\AccountInterface
    */
-  protected AccountProxyInterface $user;
+  protected AccountInterface $user;
 
   /**
    * The object renderer.
