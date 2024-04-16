@@ -5,7 +5,6 @@ namespace Drupal\embargo\Plugin\Block;
 use Drupal\Component\Utility\Html;
 use Drupal\Core\Block\BlockBase;
 use Drupal\Core\Cache\Cache;
-use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Render\RendererInterface;
@@ -14,7 +13,7 @@ use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\embargo\EmbargoInterface;
 use Drupal\node\NodeInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
  * Provides a "Embargo Notifications" block.
@@ -32,114 +31,79 @@ class EmbargoNotificationBlock extends BlockBase implements ContainerFactoryPlug
    *
    * @var string
    */
-  protected $adminMail;
+  protected string $adminMail;
 
   /**
    * The notification message.
    *
    * @var string
    */
-  protected $notificationMessage;
+  protected string $notificationMessage;
 
   /**
    * A route matching interface.
    *
    * @var \Drupal\Core\Routing\ResettableStackedRouteMatchInterface
    */
-  protected $routeMatch;
+  protected ResettableStackedRouteMatchInterface $routeMatch;
 
   /**
    * The request object.
    *
    * @var \Symfony\Component\HttpFoundation\Request
    */
-  protected $request;
-
-  /**
-   * Embargo entity storage.
-   *
-   * @var \Drupal\embargo\EmbargoStorageInterface
-   */
-  protected $storage;
+  protected Request $request;
 
   /**
    * The current user.
    *
    * @var \Drupal\Core\Session\AccountProxyInterface
    */
-  protected $user;
+  protected AccountProxyInterface $user;
 
   /**
    * The object renderer.
    *
    * @var \Drupal\Core\Render\RendererInterface
    */
-  protected $renderer;
+  protected RendererInterface $renderer;
 
   /**
-   * Construct embargo notification block.
+   * Drupal's entity type manager service.
    *
-   * @param array $configuration
-   *   Block configuration.
-   * @param string $plugin_id
-   *   The plugin ID.
-   * @param mixed $plugin_definition
-   *   The plugin definition.
-   * @param \Drupal\Core\Routing\ResettableStackedRouteMatchInterface $route_match
-   *   A route matching interface.
-   * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
-   *   The request being made to check access against.
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-   *   A configuration factory interface.
-   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
-   *   An entity type manager.
-   * @param \Drupal\Core\Session\AccountProxyInterface $user
-   *   The current user.
-   * @param \Drupal\Core\Render\RendererInterface $renderer
-   *   The object renderer.
-   *
-   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
-   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, ResettableStackedRouteMatchInterface $route_match, RequestStack $request_stack, ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entity_type_manager, AccountProxyInterface $user, RendererInterface $renderer) {
-    parent::__construct($configuration, $plugin_id, $plugin_definition);
-    $settings = $config_factory->get('embargo.settings');
-    $this->adminMail = $settings->get('contact_email');
-    $this->notificationMessage = $settings->get('notification_message');
-    $this->storage = $entity_type_manager->getStorage('embargo');
-    $this->routeMatch = $route_match;
-    $this->request = $request_stack->getCurrentRequest();
-    $this->user = $user;
-    $this->renderer = $renderer;
+  protected EntityTypeManagerInterface $entityTypeManager;
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) : self {
+    $instance = new static($configuration, $plugin_id, $plugin_definition);
+
+    $settings = $container->get('config.factory')->get('embargo.settings');
+    $instance->adminMail = $settings->get('contact_email');
+    $instance->notificationMessage = $settings->get('notification_message');
+    $instance->entityTypeManager = $container->get('entity_type.manager');
+    $instance->routeMatch = $container->get('current_route_match');
+    $instance->request = $container->get('request_stack')->getCurrentRequest();
+    $instance->user = $container->get('current_user');
+    $instance->renderer = $container->get('renderer');
+
+    return $instance;
   }
 
   /**
    * {@inheritdoc}
    */
-  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
-    return new static(
-      $configuration,
-      $plugin_id,
-      $plugin_definition,
-      $container->get('current_route_match'),
-      $container->get('request_stack'),
-      $container->get('config.factory'),
-      $container->get('entity_type.manager'),
-      $container->get('current_user'),
-      $container->get('renderer'),
-    );
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function build() {
-    $node = $this->routeMatch->getParameter('node');
-    if (!($node instanceof NodeInterface)) {
+  public function build() : array {
+    if (!($node = $this->getNode())) {
       return [];
     }
     // Displays even if the embargo is exempt in the current context.
-    $applicable_embargoes = $this->storage->getApplicableEmbargoes($node);
+    /** @var \Drupal\embargo\EmbargoStorageInterface $storage */
+    $storage = $this->entityTypeManager->getStorage('embargo');
+    $applicable_embargoes = $storage->getApplicableEmbargoes($node);
     if (empty($applicable_embargoes)) {
       return [];
     }
@@ -187,25 +151,54 @@ class EmbargoNotificationBlock extends BlockBase implements ContainerFactoryPlug
   /**
    * {@inheritdoc}
    */
-  public function getCacheTags() {
+  public function getCacheTags() : array {
+    $tags = parent::getCacheTags();
+
     // When the given node changes (route), the block should rebuild.
-    if ($node = $this->routeMatch->getParameter('node')) {
-      return Cache::mergeTags(
-        parent::getCacheTags(),
+    if ($node = $this->getNode()) {
+      $tags = Cache::mergeTags(
+        $tags,
         $node->getCacheTags(),
       );
     }
 
-    // Return default tags, if not on a node page.
-    return parent::getCacheTags();
+    return $tags;
   }
 
   /**
    * {@inheritdoc}
    */
-  public function getCacheContexts() {
-    // Ensure that with every new node/route, this block will be rebuilt.
-    return Cache::mergeContexts(parent::getCacheContexts(), ['route', 'url']);
+  public function getCacheContexts() : array {
+    $contexts = Cache::mergeContexts(
+      parent::getCacheContexts(),
+      // Ensure that with every new node/route, this block will be rebuilt.
+      [
+        'route',
+        'url',
+      ],
+    );
+
+    if ($node = $this->getNode()) {
+      $contexts = Cache::mergeContexts(
+        $contexts,
+        $node->getCacheContexts(),
+      );
+    }
+
+    return $contexts;
+  }
+
+  /**
+   * Helper; get the active node.
+   *
+   * @return \Drupal\node\NodeInterface|null
+   *   Get the active node.
+   */
+  protected function getNode() : ?NodeInterface {
+    $node_candidate = $this->routeMatch->getParameter('node');
+    return $node_candidate instanceof NodeInterface ?
+      $node_candidate :
+      NULL;
   }
 
 }
