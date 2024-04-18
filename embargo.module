@@ -47,6 +47,8 @@ function embargo_file_download($uri) : null|array|int {
       return -1;
     }
   }
+
+  return NULL;
 }
 
 /**
