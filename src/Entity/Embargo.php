@@ -43,7 +43,7 @@ use Drupal\user\UserInterface;
  *     },
  *   },
  *   list_cache_contexts = { "ip.embargo_range", "user" },
- *   list_cache_tags = { "embargo_list" },
+ *   list_cache_tags = { "embargo_list", "embargo_ip_range_list" },
  *   base_table = "embargo",
  *   admin_permission = "administer embargo",
  *   entity_keys = {
