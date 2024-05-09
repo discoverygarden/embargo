@@ -42,7 +42,8 @@ use Drupal\user\UserInterface;
  *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider"
  *     },
  *   },
- *   list_cache_tags = { "node_list", "media_list", "file_list" },
+ *   list_cache_contexts = { "ip.embargo_range", "user" },
+ *   list_cache_tags = { "embargo_list" },
  *   base_table = "embargo",
  *   admin_permission = "administer embargo",
  *   entity_keys = {
@@ -448,6 +449,20 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
   public function ipIsExempt(string $ip): bool {
     $exempt_ips = $this->getExemptIps();
     return $exempt_ips && $exempt_ips->withinRanges($ip);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function getListCacheTagsToInvalidate() : array {
+    return array_merge(
+      parent::getListCacheTagsToInvalidate(),
+      [
+        'node_list',
+        'media_list',
+        'file_list',
+      ]
+    );
   }
 
 }

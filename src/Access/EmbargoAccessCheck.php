@@ -74,6 +74,10 @@ class EmbargoAccessCheck implements EmbargoAccessCheckInterface {
       )->render()
     );
     array_map([$state, 'addCacheableDependency'], $embargoes);
+
+    $type = $this->entityTypeManager->getDefinition('embargo');
+    $state->addCacheTags($type->getListCacheTags())
+      ->addCacheContexts($type->getListCacheContexts());
     return $state;
   }
 
