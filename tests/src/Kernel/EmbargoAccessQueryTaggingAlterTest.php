@@ -15,6 +15,7 @@ use Drupal\Tests\islandora_test_support\Traits\DatabaseQueryTestTraits;
  * @group embargo
  */
 class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
+
   use DatabaseQueryTestTraits;
 
   /**
@@ -101,6 +102,13 @@ class EmbargoAccessQueryTaggingAlterTest extends EmbargoKernelTestBase {
   public function setUp(): void {
     parent::setUp();
 
+    $this->setupEntities();
+  }
+
+  /**
+   * Helper; build out entities with which to test.
+   */
+  protected function setupEntities() : void {
     // Create two nodes one embargoed and one non-embargoed.
     $this->embargoedNode = $this->createNode();
     $this->embargoedMedia = $this->createMedia($this->embargoedFile = $this->createFile(), $this->embargoedNode);

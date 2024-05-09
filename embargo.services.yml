@@ -18,11 +18,12 @@ services:
       - '@entity_type.manager'
       - '@datetime.time'
       - '@date.formatter'
+      - '@event_dispatcher'
   embargo.route_subscriber:
     class: Drupal\embargo\Routing\EmbargoRouteSubscriber
     arguments: ['@entity_type.manager']
     tags:
-      - { name: event_subscriber }
+      - { name: 'event_subscriber' }
   embargo.ip_range_redirect:
     class: '\Drupal\embargo\EventSubscriber\IpRangeRedirect'
     arguments:
@@ -36,5 +37,28 @@ services:
     factory: [null, 'create']
     arguments:
       - '@service_container'
+    tags:
+      - { name: 'event_subscriber' }
+  embargo.search_api_tracker_helper:
+    class: Drupal\embargo\SearchApiTracker
+    factory: [null, 'create']
+    arguments:
+      - '@service_container'
+  embargo.search_api_solr_join_processor_event_subscriber:
+    class: Drupal\embargo\EventSubscriber\EmbargoJoinProcessorEventSubscriber
+    factory: [null, 'create']
+    arguments:
+      - '@service_container'
+    tags:
+      - { name: 'event_subscriber' }
+  cache_context.ip.embargo_range:
+    class: Drupal\embargo\Cache\Context\IpRangeCacheContext
+    arguments:
+      - '@request_stack'
+      - '@entity_type.manager'
+    tags:
+      - { name: 'cache.context' }
+  embargo.tagging_event_subscriber:
+    class: Drupal\embargo\EventSubscriber\TaggingEventSubscriber
     tags:
       - { name: 'event_subscriber' }

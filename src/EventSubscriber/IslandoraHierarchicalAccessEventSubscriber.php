@@ -42,14 +42,15 @@ class IslandoraHierarchicalAccessEventSubscriber implements EventSubscriberInter
    * {@inheritDoc}
    */
   public static function create(ContainerInterface $container) : self {
-    return new static(
+    return (new static(
       $container->get('current_user'),
       $container->get('request_stack'),
       $container->get('database'),
       $container->get('entity_type.manager'),
       $container->get('datetime.time'),
       $container->get('date.formatter'),
-    );
+    ))
+      ->setEventDispatcher($container->get('event_dispatcher'));
   }
 
   /**

@@ -13,6 +13,7 @@ use Drupal\embargo\EmbargoInterface;
 use Drupal\islandora_hierarchical_access\Access\QueryConjunctionTrait;
 use Drupal\islandora_hierarchical_access\TaggedTargetsTrait;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Handles tagging entity queries with access restrictions for embargoes.
@@ -32,7 +33,8 @@ class QueryTagger {
     Connection $database,
     EntityTypeManagerInterface $entity_type_manager,
     TimeInterface $time,
-    DateFormatterInterface $date_formatter
+    DateFormatterInterface $date_formatter,
+    EventDispatcherInterface $event_dispatcher,
   ) {
     $this->user = $user;
     $this->currentIp = $request_stack->getCurrentRequest()->getClientIp();
@@ -40,6 +42,7 @@ class QueryTagger {
     $this->entityTypeManager = $entity_type_manager;
     $this->time = $time;
     $this->dateFormatter = $date_formatter;
+    $this->setEventDispatcher($event_dispatcher);
   }
 
   /**

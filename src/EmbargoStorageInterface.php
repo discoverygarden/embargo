@@ -11,11 +11,19 @@ use Drupal\Core\Session\AccountInterface;
  */
 interface EmbargoStorageInterface extends ContentEntityStorageInterface {
 
+  const APPLICABLE_ENTITY_TYPES = [
+    'node',
+    'media',
+    'file',
+  ];
+
   /**
    * A list of entity types which an embargo can apply to.
    *
    * @return string[]
    *   A list of entity types identifiers which an embargo can apply to.
+   *
+   * @obsolete
    */
   public static function applicableEntityTypes();
 

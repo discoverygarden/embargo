@@ -28,9 +28,8 @@ use Symfony\Component\HttpFoundation\RequestStack;
  *
  * @SearchApiProcessor(
  *   id = "embargo_processor",
- *   label = @Translation("Embargo access"),
- *   description = @Translation("Add information regarding embargo access
- *   constraints."),
+ *   label = @Translation("Embargo access (deprecated)"),
+ *   description = @Translation("Add information regarding embargo access constraints."),
  *   stages = {
  *     "add_properties" = 20,
  *     "pre_index_save" = 20,
@@ -90,15 +89,17 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
    * {@inheritdoc}
    */
   public function getPropertyDefinitions(DatasourceInterface $datasource = NULL) : array {
+    $properties = [];
+
     if ($datasource === NULL) {
-      return [];
+      return $properties;
     }
 
-    return [
-      'embargo' => ListableEntityProcessorProperty::create('embargo')
-        ->setList()
-        ->setProcessorId($this->getPluginId()),
-    ];
+    $properties['embargo'] = ListableEntityProcessorProperty::create('embargo')
+      ->setList()
+      ->setProcessorId($this->getPluginId());
+
+    return $properties;
   }
 
   /**
@@ -138,8 +139,17 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
     /** @var \Drupal\embargo\EmbargoStorageInterface $embargo_storage */
     $embargo_storage = $this->entityTypeManager->getStorage('embargo');
     $embargoes = $embargo_storage->getApplicableEmbargoes($entity);
+    $relevant_embargoes = array_filter(
+      $embargoes,
+      function (EmbargoInterface $embargo) use ($entity) {
+        return in_array($embargo->getEmbargoType(), match ($entity->getEntityTypeId()) {
+          'file', 'media' => [EmbargoInterface::EMBARGO_TYPE_FILE, EmbargoInterface::EMBARGO_TYPE_NODE],
+          'node' => [EmbargoInterface::EMBARGO_TYPE_NODE],
+        });
+      }
+    );
 
-    foreach ($embargoes as $embargo) {
+    foreach ($relevant_embargoes as $embargo) {
       $this->getFieldsHelper()->extractFields($embargo->getTypedData(), $to_extract);
     }
 
@@ -278,7 +288,7 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
         $or_group->addCondition($field->getFieldIdentifier(), $ipRange->id());
         $query->addCacheableDependency($ipRange);
       }
-      $query->addCacheContexts(['ip']);
+      $query->addCacheContexts(['ip.embargo_range']);
     }
 
     return (count($or_group->getConditions()) > 0) ? $or_group : NULL;
