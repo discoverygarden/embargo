@@ -62,6 +62,11 @@ class EmbargoAccessCheck implements EmbargoAccessCheckInterface {
       ->addCacheTags($type->getListCacheTags())
       ->addCacheContexts($type->getListCacheContexts());
 
+    if ($user->hasPermission('bypass embargo access')) {
+      return $state->setReason('User has embargo bypass permission.')
+        ->addCacheContexts(['user.permissions']);
+    }
+
     /** @var \Drupal\embargo\EmbargoStorage $storage */
     $storage = $this->entityTypeManager->getStorage('embargo');
     $related_embargoes = $storage->getApplicableEmbargoes($entity);
