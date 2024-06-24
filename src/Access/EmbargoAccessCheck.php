@@ -57,28 +57,35 @@ class EmbargoAccessCheck implements EmbargoAccessCheckInterface {
    * {@inheritdoc}
    */
   public function access(EntityInterface $entity, AccountInterface $user) {
+    $type = $this->entityTypeManager->getDefinition('embargo');
+    $state = AccessResult::neutral()
+      ->addCacheTags($type->getListCacheTags())
+      ->addCacheContexts($type->getListCacheContexts());
+
     /** @var \Drupal\embargo\EmbargoStorage $storage */
     $storage = $this->entityTypeManager->getStorage('embargo');
+    $related_embargoes = $storage->getApplicableEmbargoes($entity);
+    if (empty($related_embargoes)) {
+      return $state->setReason('No embargo statements for the given entity.');
+    }
+
+    array_map([$state, 'addCacheableDependency'], $related_embargoes);
+
     $embargoes = $storage->getApplicableNonExemptNonExpiredEmbargoes(
       $entity,
       $this->request->server->get('REQUEST_TIME'),
       $user,
       $this->request->getClientIp()
     );
-    $state = AccessResult::forbiddenIf(
+    return $state->andIf(AccessResult::forbiddenIf(
       !empty($embargoes),
       $this->formatPlural(
         count($embargoes),
         '1 embargo preventing access.',
         '@count embargoes preventing access.'
       )->render()
-    );
-    array_map([$state, 'addCacheableDependency'], $embargoes);
+    ));
 
-    $type = $this->entityTypeManager->getDefinition('embargo');
-    $state->addCacheTags($type->getListCacheTags())
-      ->addCacheContexts($type->getListCacheContexts());
-    return $state;
   }
 
 }

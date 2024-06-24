@@ -289,7 +289,7 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
       // cacheability.
       'ip.embargo_range',
       // Exemptable users, so need to deal with them.
-      'user',
+      'user.embargo__has_exemption',
     ]);
     // Embargo dates deal with granularity to the day.
     $query->mergeCacheMaxAge(24 * 3600);
