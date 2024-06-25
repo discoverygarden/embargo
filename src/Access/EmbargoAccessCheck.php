@@ -58,9 +58,7 @@ class EmbargoAccessCheck implements EmbargoAccessCheckInterface {
    */
   public function access(EntityInterface $entity, AccountInterface $user) {
     $type = $this->entityTypeManager->getDefinition('embargo');
-    $state = AccessResult::neutral()
-      ->addCacheTags($type->getListCacheTags())
-      ->addCacheContexts($type->getListCacheContexts());
+    $state = AccessResult::neutral();
 
     if ($user->hasPermission('bypass embargo access')) {
       return $state->setReason('User has embargo bypass permission.')
@@ -69,6 +67,8 @@ class EmbargoAccessCheck implements EmbargoAccessCheckInterface {
 
     /** @var \Drupal\embargo\EmbargoStorage $storage */
     $storage = $this->entityTypeManager->getStorage('embargo');
+    $state->addCacheTags($type->getListCacheTags())
+      ->addCacheContexts($type->getListCacheContexts());
     $related_embargoes = $storage->getApplicableEmbargoes($entity);
     if (empty($related_embargoes)) {
       return $state->setReason('No embargo statements for the given entity.');
