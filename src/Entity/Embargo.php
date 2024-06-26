@@ -12,6 +12,7 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\TypedData\Exception\MissingDataException;
 use Drupal\datetime\Plugin\Field\FieldType\DateTimeItemInterface;
 use Drupal\embargo\EmbargoInterface;
+use Drupal\embargo\EmbargoStorageInterface;
 use Drupal\embargo\IpRangeInterface;
 use Drupal\node\NodeInterface;
 use Drupal\user\UserInterface;
@@ -43,8 +44,6 @@ use Drupal\user\UserInterface;
  *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider"
  *     },
  *   },
- *   list_cache_contexts = { "ip.embargo_range", "user" },
- *   list_cache_tags = { "embargo_list", "embargo_ip_range_list" },
  *   base_table = "embargo",
  *   admin_permission = "administer embargo",
  *   entity_keys = {
@@ -413,7 +412,7 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
     $contexts = Cache::mergeContexts(
       parent::getCacheContexts(),
       $this->getEmbargoedNode()->getCacheContexts(),
-      [$this->getExemptUsers() ? 'user' : 'user.permissions'],
+      ['user.embargo__has_exemption'],
     );
 
     if ($this->getExemptIps()) {
@@ -458,11 +457,9 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
   protected function getListCacheTagsToInvalidate() : array {
     return array_merge(
       parent::getListCacheTagsToInvalidate(),
-      [
-        'node_list',
-        'media_list',
-        'file_list',
-      ]
+      array_map(function (string $type) {
+        return "{$type}_list";
+      }, EmbargoStorageInterface::APPLICABLE_ENTITY_TYPES),
     );
   }
 

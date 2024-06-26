@@ -62,3 +62,10 @@ services:
     class: Drupal\embargo\EventSubscriber\TaggingEventSubscriber
     tags:
       - { name: 'event_subscriber' }
+  cache_context.user.embargo__has_exemption:
+    class: Drupal\embargo\Cache\Context\UserExemptedCacheContext
+    arguments:
+      - '@current_user'
+      - '@entity_type.manager'
+    tags:
+      - { name: 'cache.context' }

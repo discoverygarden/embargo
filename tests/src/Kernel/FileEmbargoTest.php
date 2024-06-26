@@ -73,7 +73,7 @@ class FileEmbargoTest extends EmbargoKernelTestBase {
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function testDeletedEmbargoedFileRelatedMediaFileAccessAllowed(
-    $operation
+    $operation,
   ) {
     $node = $this->createNode();
     $file = $this->createFile();
