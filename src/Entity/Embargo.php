@@ -417,7 +417,7 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
       ['user.embargo__has_exemption'],
     );
     if ($node = $this->getEmbargoedNode()) {
-      $context = Cache::mergeContexts($contexts, $node->getCacheContexts());
+      $contexts = Cache::mergeContexts($contexts, $node->getCacheContexts());
     }
 
     if ($this->getExemptIps()) {
