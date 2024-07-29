@@ -3,12 +3,14 @@
 namespace Drupal\embargo\Entity;
 
 use Drupal\Component\Utility\UrlHelper;
+use Drupal\Core\Cache\Cache;
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\EntityStorageException;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
+use Drupal\embargo\EmbargoStorageInterface;
 use Drupal\embargo\IpRangeInterface;
 use Symfony\Component\HttpFoundation\IpUtils;
 
@@ -28,6 +30,7 @@ use Symfony\Component\HttpFoundation\IpUtils;
  *   handlers = {
  *     "storage" = "Drupal\embargo\IpRangeStorage",
  *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
+ *     "views_data" = "Drupal\embargo\EmbargoIpRangeViewsData",
  *     "list_builder" = "Drupal\embargo\EmbargoListBuilder",
  *     "form" = {
  *       "add" = "Drupal\embargo\Form\IpRangeForm",
@@ -38,7 +41,6 @@ use Symfony\Component\HttpFoundation\IpUtils;
  *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider"
  *     },
  *   },
- *   list_cache_tags = { "node_list", "media_list", "file_list" },
  *   base_table = "embargo_ip_range",
  *   admin_permission = "administer embargo",
  *   entity_keys = {
@@ -237,6 +239,27 @@ class IpRange extends ContentEntityBase implements IpRangeInterface {
       return $mask <= 128;
     }
     return FALSE;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  public function getCacheContexts() {
+    return Cache::mergeContexts(parent::getCacheContexts(), [
+      'ip.embargo_range',
+    ]);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function getListCacheTagsToInvalidate() : array {
+    return array_merge(
+      parent::getListCacheTagsToInvalidate(),
+      array_map(function (string $type) {
+        return "{$type}_list";
+      }, EmbargoStorageInterface::APPLICABLE_ENTITY_TYPES),
+    );
   }
 
 }

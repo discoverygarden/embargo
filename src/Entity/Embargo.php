@@ -12,6 +12,7 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\TypedData\Exception\MissingDataException;
 use Drupal\datetime\Plugin\Field\FieldType\DateTimeItemInterface;
 use Drupal\embargo\EmbargoInterface;
+use Drupal\embargo\EmbargoStorageInterface;
 use Drupal\embargo\IpRangeInterface;
 use Drupal\node\NodeInterface;
 use Drupal\user\UserInterface;
@@ -32,6 +33,7 @@ use Drupal\user\UserInterface;
  *   handlers = {
  *     "storage" = "Drupal\embargo\EmbargoStorage",
  *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
+ *     "views_data" = "Drupal\embargo\EmbargoViewsData",
  *     "list_builder" = "Drupal\embargo\EmbargoListBuilder",
  *     "form" = {
  *       "add" = "Drupal\embargo\Form\EmbargoForm",
@@ -42,7 +44,6 @@ use Drupal\user\UserInterface;
  *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider"
  *     },
  *   },
- *   list_cache_tags = { "node_list", "media_list", "file_list" },
  *   base_table = "embargo",
  *   admin_permission = "administer embargo",
  *   entity_keys = {
@@ -378,31 +379,47 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
   }
 
   /**
-   * The maximum age for which this object may be cached.
-   *
-   * @return int
-   *   The maximum time in seconds that this object may be cached.
+   * {@inheritDoc}
    */
   public function getCacheMaxAge() {
+    $max_age = parent::getCacheMaxAge();
+
     $now = time();
     // Invalidate cache after a scheduled embargo expires.
     if ($this->getExpirationType() === static::EXPIRATION_TYPE_SCHEDULED && !$this->expiresBefore($now)) {
-      return $this->getExpirationDate()->getTimestamp() - $now;
+      $max_age = Cache::mergeMaxAges($max_age, $this->getExpirationDate()->getTimestamp() - $now);
     }
-    // Other properties of the embargo are not time dependent.
-    return parent::getCacheMaxAge();
+
+    return $max_age;
   }
 
   /**
    * {@inheritdoc}
    */
   public function getCacheTags() {
-    $tags = parent::getCacheTags();
-    $tags[] = "node:{$this->getEmbargoedNode()->id()}";
+    $tags = Cache::mergeTags(parent::getCacheTags(), $this->getEmbargoedNode()->getCacheTags());
+
     if ($this->getExemptIps()) {
       $tags = Cache::mergeTags($tags, $this->getExemptIps()->getCacheTags());
     }
     return $tags;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  public function getCacheContexts() {
+    $contexts = Cache::mergeContexts(
+      parent::getCacheContexts(),
+      $this->getEmbargoedNode()->getCacheContexts(),
+      ['user.embargo__has_exemption'],
+    );
+
+    if ($this->getExemptIps()) {
+      $contexts = Cache::mergeContexts($contexts, $this->getExemptIps()->getCacheContexts());
+    }
+
+    return $contexts;
   }
 
   /**
@@ -432,6 +449,18 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
   public function ipIsExempt(string $ip): bool {
     $exempt_ips = $this->getExemptIps();
     return $exempt_ips && $exempt_ips->withinRanges($ip);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function getListCacheTagsToInvalidate() : array {
+    return array_merge(
+      parent::getListCacheTagsToInvalidate(),
+      array_map(function (string $type) {
+        return "{$type}_list";
+      }, EmbargoStorageInterface::APPLICABLE_ENTITY_TYPES),
+    );
   }
 
 }

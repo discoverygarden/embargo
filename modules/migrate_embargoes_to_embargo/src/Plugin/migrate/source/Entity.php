@@ -2,13 +2,11 @@
 
 namespace Drupal\migrate_embargoes_to_embargo\Plugin\migrate\source;
 
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\migrate\Plugin\migrate\source\SourcePluginBase;
 use Drupal\migrate\Plugin\MigrationInterface;
-
-use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\Entity\EntityTypeInterface;
-use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
-
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -42,7 +40,7 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
     $plugin_id,
     $plugin_definition,
     MigrationInterface $migration,
-    EntityTypeManagerInterface $entity_type_manager
+    EntityTypeManagerInterface $entity_type_manager,
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition, $migration);
 
@@ -58,7 +56,7 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
     array $configuration,
     $plugin_id,
     $plugin_definition,
-    MigrationInterface $migration = NULL
+    MigrationInterface $migration = NULL,
   ) {
     return new static(
       $configuration,

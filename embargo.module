@@ -5,15 +5,18 @@
  * Hook implementations.
  */
 
+use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Database\Query\AlterableInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\embargo\EmbargoStorage;
+use Drupal\media\MediaInterface;
+use Drupal\node\NodeInterface;
 
 /**
  * Implements hook_entity_type_alter().
  */
-function embargo_entity_type_alter(array &$entity_types) {
+function embargo_entity_type_alter(array &$entity_types) : void {
   $applicable_entity_types = EmbargoStorage::applicableEntityTypes();
   foreach ($applicable_entity_types as $entity_type_id) {
     $entity_type = &$entity_types[$entity_type_id];
@@ -24,7 +27,7 @@ function embargo_entity_type_alter(array &$entity_types) {
 /**
  * Implements hook_entity_access().
  */
-function embargo_entity_access(EntityInterface $entity, $operation, AccountInterface $account) {
+function embargo_entity_access(EntityInterface $entity, $operation, AccountInterface $account) : AccessResultInterface {
   /** @var \Drupal\embargo\Access\EmbargoAccessCheckInterface $service */
   $service = \Drupal::service('access_check.embargo');
   return $service->access($entity, $account);
@@ -33,7 +36,7 @@ function embargo_entity_access(EntityInterface $entity, $operation, AccountInter
 /**
  * Implements hook_file_download().
  */
-function embargo_file_download($uri) {
+function embargo_file_download($uri) : null|array|int {
   $files = \Drupal::entityTypeManager()
     ->getStorage('file')
     ->loadByProperties(['uri' => $uri]);
@@ -44,39 +47,23 @@ function embargo_file_download($uri) {
       return -1;
     }
   }
+
+  return NULL;
 }
 
 /**
  * Implements hook_query_TAG_alter() for `node_access` tagged queries.
  */
-function embargo_query_node_access_alter(AlterableInterface $query) {
+function embargo_query_node_access_alter(AlterableInterface $query) : void {
   /** @var \Drupal\embargo\Access\QueryTagger $tagger */
   $tagger = \Drupal::service('embargo.query_tagger');
-  $tagger->tagAccess($query, 'node');
-}
-
-/**
- * Implements hook_query_TAG_alter() for `media_access` tagged queries.
- */
-function embargo_query_media_access_alter(AlterableInterface $query) {
-  /** @var \Drupal\embargo\Access\QueryTagger $tagger */
-  $tagger = \Drupal::service('embargo.query_tagger');
-  $tagger->tagAccess($query, 'media');
-}
-
-/**
- * Implements hook_query_TAG_alter() for `file_access` tagged queries.
- */
-function embargo_query_file_access_alter(AlterableInterface $query) {
-  /** @var \Drupal\embargo\Access\QueryTagger $tagger */
-  $tagger = \Drupal::service('embargo.query_tagger');
-  $tagger->tagAccess($query, 'file');
+  $tagger->tagNode($query);
 }
 
 /**
  * Implements hook_theme().
  */
-function embargo_theme($existing, $type, $theme, $path) {
+function embargo_theme($existing, $type, $theme, $path) : array {
   return [
     'embargo_ip_access_exemption' => [
       'template' => 'embargo-ip-access-exemption',
@@ -96,4 +83,74 @@ function embargo_theme($existing, $type, $theme, $path) {
       ],
     ],
   ];
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_insert() for embargo entities.
+ */
+function embargo_embargo_insert(EntityInterface $entity) : void {
+  /** @var \Drupal\embargo\SearchApiTracker $tracker */
+  $tracker = \Drupal::service('embargo.search_api_tracker_helper');
+  $tracker->track($entity);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_update() for embargo entities.
+ */
+function embargo_embargo_update(EntityInterface $entity) : void {
+  /** @var \Drupal\embargo\SearchApiTracker $tracker */
+  $tracker = \Drupal::service('embargo.search_api_tracker_helper');
+  $tracker->track($entity);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_delete() for embargo entities.
+ */
+function embargo_embargo_delete(EntityInterface $entity) : void {
+  /** @var \Drupal\embargo\SearchApiTracker $tracker */
+  $tracker = \Drupal::service('embargo.search_api_tracker_helper');
+  $tracker->track($entity);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_delete() for node entities.
+ */
+function embargo_node_delete(EntityInterface $entity) : void {
+  assert($entity instanceof NodeInterface);
+  /** @var \Drupal\embargo\SearchApiTracker $tracker */
+  $tracker = \Drupal::service('embargo.search_api_tracker_helper');
+  $tracker->propagateChildren($entity);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_insert() for media entities.
+ */
+function embargo_media_insert(EntityInterface $entity) : void {
+  assert($entity instanceof MediaInterface);
+
+  /** @var \Drupal\embargo\SearchApiTracker $tracker */
+  $tracker = \Drupal::service('embargo.search_api_tracker_helper');
+  $tracker->mediaWriteReaction($entity);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_update() for media entities.
+ */
+function embargo_media_update(EntityInterface $entity) : void {
+  assert($entity instanceof MediaInterface);
+
+  /** @var \Drupal\embargo\SearchApiTracker $tracker */
+  $tracker = \Drupal::service('embargo.search_api_tracker_helper');
+  $tracker->mediaWriteReaction($entity);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_delete() for media entities.
+ */
+function embargo_media_delete(EntityInterface $entity) : void {
+  assert($entity instanceof MediaInterface);
+
+  /** @var \Drupal\embargo\SearchApiTracker $tracker */
+  $tracker = \Drupal::service('embargo.search_api_tracker_helper');
+  $tracker->mediaDeleteReaction($entity);
 }

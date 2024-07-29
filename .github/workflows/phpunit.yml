@@ -10,3 +10,10 @@ jobs:
   PHPUnit:
     uses: discoverygarden/phpunit-action/.github/workflows/phpunit.yml@v1
     secrets: inherit
+    with:
+      composer_patches: |-
+        {
+          "discoverygarden/islandora_hierarchical_access": {
+            "dependent work from dependency": "https://github.com/discoverygarden/islandora_hierarchical_access/pull/19.patch"
+          }
+        }
