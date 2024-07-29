@@ -397,29 +397,33 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
    * {@inheritdoc}
    */
   public function getCacheTags() {
-    $tags = Cache::mergeTags(parent::getCacheTags(), $this->getEmbargoedNode()->getCacheTags());
+    if ($this->getEmbargoedNode() !== NULL) {
+      $tags = Cache::mergeTags(parent::getCacheTags(), $this->getEmbargoedNode()->getCacheTags());
 
-    if ($this->getExemptIps()) {
-      $tags = Cache::mergeTags($tags, $this->getExemptIps()->getCacheTags());
+      if ($this->getExemptIps()) {
+        $tags = Cache::mergeTags($tags, $this->getExemptIps()->getCacheTags());
+      }
+      return $tags;
     }
-    return $tags;
   }
 
   /**
    * {@inheritDoc}
    */
   public function getCacheContexts() {
-    $contexts = Cache::mergeContexts(
-      parent::getCacheContexts(),
-      $this->getEmbargoedNode()->getCacheContexts(),
-      ['user.embargo__has_exemption'],
-    );
+    if ($this->getEmbargoedNode() !== NULL) {
+      $contexts = Cache::mergeContexts(
+        parent::getCacheContexts(),
+        $this->getEmbargoedNode()->getCacheContexts(),
+        ['user.embargo__has_exemption'],
+      );
 
-    if ($this->getExemptIps()) {
-      $contexts = Cache::mergeContexts($contexts, $this->getExemptIps()->getCacheContexts());
+      if ($this->getExemptIps()) {
+        $contexts = Cache::mergeContexts($contexts, $this->getExemptIps()->getCacheContexts());
+      }
+
+      return $contexts;
     }
-
-    return $contexts;
   }
 
   /**
