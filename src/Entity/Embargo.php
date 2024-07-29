@@ -397,33 +397,34 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
    * {@inheritdoc}
    */
   public function getCacheTags() {
-    if ($this->getEmbargoedNode() !== NULL) {
-      $tags = Cache::mergeTags(parent::getCacheTags(), $this->getEmbargoedNode()->getCacheTags());
-
-      if ($this->getExemptIps()) {
-        $tags = Cache::mergeTags($tags, $this->getExemptIps()->getCacheTags());
-      }
-      return $tags;
+    $tags = parent::getCacheTags();
+    if ($node = $this->getEmbargoedNode()) {
+      $tags = Cache::mergeTags($tags, $node->getCacheTags());
     }
+
+    if ($this->getExemptIps()) {
+      $tags = Cache::mergeTags($tags, $this->getExemptIps()->getCacheTags());
+    }
+    return $tags;
   }
 
   /**
    * {@inheritDoc}
    */
   public function getCacheContexts() {
-    if ($this->getEmbargoedNode() !== NULL) {
-      $contexts = Cache::mergeContexts(
-        parent::getCacheContexts(),
-        $this->getEmbargoedNode()->getCacheContexts(),
-        ['user.embargo__has_exemption'],
-      );
-
-      if ($this->getExemptIps()) {
-        $contexts = Cache::mergeContexts($contexts, $this->getExemptIps()->getCacheContexts());
-      }
-
-      return $contexts;
+    $contexts = Cache::mergeContexts(
+      parent::getCacheContexts(),
+      ['user.embargo__has_exemption'],
+    );
+    if ($node = $this->getEmbargoedNode()) {
+      $context = Cache::mergeContexts($contexts, $node->getCacheContexts());
     }
+
+    if ($this->getExemptIps()) {
+      $contexts = Cache::mergeContexts($contexts, $this->getExemptIps()->getCacheContexts());
+    }
+
+    return $contexts;
   }
 
   /**
@@ -443,8 +444,8 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
     $exempt_users = $this->getExemptUsers();
     $has_permission = $user->hasPermission('bypass embargo access');
     return $has_permission || in_array($user->id(), array_map(function (UserInterface $user) {
-      return $user->id();
-    }, $exempt_users));
+        return $user->id();
+      }, $exempt_users));
   }
 
   /**
