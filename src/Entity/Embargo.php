@@ -417,7 +417,7 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
       ['user.embargo__has_exemption'],
     );
     if ($node = $this->getEmbargoedNode()) {
-      $context = Cache::mergeContexts($contexts, $node->getCacheContexts());
+      $contexts = Cache::mergeContexts($contexts, $node->getCacheContexts());
     }
 
     if ($this->getExemptIps()) {
@@ -444,8 +444,8 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
     $exempt_users = $this->getExemptUsers();
     $has_permission = $user->hasPermission('bypass embargo access');
     return $has_permission || in_array($user->id(), array_map(function (UserInterface $user) {
-        return $user->id();
-      }, $exempt_users));
+      return $user->id();
+    }, $exempt_users));
   }
 
   /**
