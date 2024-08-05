@@ -218,6 +218,12 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
    */
   protected function doAddEmbargoField(ItemInterface $item, EntityInterface $entity) : void {
     assert($entity instanceof EmbargoInterface);
+
+    // Early return if there is no embargoed node.
+    if ($entity->getEmbargoedNode() === NULL) {
+      return;
+    }
+
     $paths = match ($entity->getEmbargoType()) {
       EmbargoInterface::EMBARGO_TYPE_FILE => [static::EMBARGO_FIELD_FILE],
       EmbargoInterface::EMBARGO_TYPE_NODE => [static::EMBARGO_FIELD_NODE, static::EMBARGO_FIELD_FILE],

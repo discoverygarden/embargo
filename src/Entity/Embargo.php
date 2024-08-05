@@ -397,7 +397,10 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
    * {@inheritdoc}
    */
   public function getCacheTags() {
-    $tags = Cache::mergeTags(parent::getCacheTags(), $this->getEmbargoedNode()->getCacheTags());
+    $tags = parent::getCacheTags();
+    if ($node = $this->getEmbargoedNode()) {
+      $tags = Cache::mergeTags($tags, $node->getCacheTags());
+    }
 
     if ($this->getExemptIps()) {
       $tags = Cache::mergeTags($tags, $this->getExemptIps()->getCacheTags());
@@ -411,9 +414,11 @@ class Embargo extends ContentEntityBase implements EmbargoInterface {
   public function getCacheContexts() {
     $contexts = Cache::mergeContexts(
       parent::getCacheContexts(),
-      $this->getEmbargoedNode()->getCacheContexts(),
       ['user.embargo__has_exemption'],
     );
+    if ($node = $this->getEmbargoedNode()) {
+      $contexts = Cache::mergeContexts($contexts, $node->getCacheContexts());
+    }
 
     if ($this->getExemptIps()) {
       $contexts = Cache::mergeContexts($contexts, $this->getExemptIps()->getCacheContexts());
