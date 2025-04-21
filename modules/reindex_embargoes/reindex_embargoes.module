@@ -15,7 +15,7 @@ function reindex_embargoes_cron(): void {
   $request_time = \Drupal::time()->getRequestTime();
   $next_day = $request_time + 86400;
 
-  // XXX: Dates are stored as varchar in the database, so we need to convert them to timestamps.
+  // XXX: Dates are stored as varchar, so can't use date comparison.
   $embargo_ids = $entity_type_manager->getStorage('embargo')->getQuery()
     ->accessCheck(FALSE)
     ->condition('embargoed_node', NULL, 'IS NOT NULL')
