@@ -31,7 +31,7 @@ class EmbargoExpirationReindex extends QueueWorkerBase implements ContainerFacto
   /**
    * The time service.
    *
-   * @var \Drupal\Component\Datetime\Time
+   * @var \Drupal\Component\Datetime\TimeInterface
    */
   protected TimeInterface $time;
 
