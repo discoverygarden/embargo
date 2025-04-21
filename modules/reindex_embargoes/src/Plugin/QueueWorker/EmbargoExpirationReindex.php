@@ -99,5 +99,5 @@ class EmbargoExpirationReindex extends QueueWorkerBase implements ContainerFacto
       }
     }
   }
-  
+
 }
