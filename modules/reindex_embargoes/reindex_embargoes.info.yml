@@ -1,0 +1,9 @@
+---
+name: Reindex embargoes
+type: module
+description: 'Module to reindex embargoes.'
+package: Embargo
+core_version_requirement: ^9 || ^10
+dependencies:
+  - embargo:embargo
+  - search_api:search_api

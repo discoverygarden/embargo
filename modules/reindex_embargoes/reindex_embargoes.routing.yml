@@ -1,0 +1,7 @@
+reindex_embargoes.settings:
+  path: '/admin/config/content/embargo/reindex'
+  defaults:
+    _form: '\Drupal\reindex_embargoes\Form\SettingsForm'
+    _title: 'Reindex Embargoes'
+  requirements:
+    _permission: 'administer site configuration'

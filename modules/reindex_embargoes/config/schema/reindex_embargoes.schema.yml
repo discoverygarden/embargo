@@ -1,0 +1,10 @@
+reindex_embargoes.settings:
+  type: config_object
+  label: 'Reindex embargoes settings'
+  mapping:
+    selected_indexes:
+      type: sequence
+      label: 'Selected Search API Indexes'
+      sequence:
+        type: string
+        label: 'Search API Index'
