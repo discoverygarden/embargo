@@ -11,6 +11,8 @@ use Drupal\Core\Queue\QueueWorkerBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
+ * QueueWorker for reindexing embargoed nodes.
+ *
  * @QueueWorker(
  *   id = "embargo_expiration_reindex",
  *   title = @Translation("Embargo Expiration Reindex"),
