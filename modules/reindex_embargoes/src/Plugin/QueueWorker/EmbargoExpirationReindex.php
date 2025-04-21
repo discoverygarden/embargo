@@ -24,7 +24,7 @@ class EmbargoExpirationReindex extends QueueWorkerBase implements ContainerFacto
   /**
    * Entity type manager.
    *
-   * @var \Drupal\Core\Entity\EntityTypeManagerInterface;
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
   protected EntityTypeManagerInterface $entityTypeManager;
 
@@ -49,6 +49,9 @@ class EmbargoExpirationReindex extends QueueWorkerBase implements ContainerFacto
    */
   protected ConfigFactoryInterface $configFactory;
 
+  /**
+   * {@inheritdoc}
+   */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
     $instance = new static($configuration, $plugin_id, $plugin_definition);
 
@@ -59,6 +62,9 @@ class EmbargoExpirationReindex extends QueueWorkerBase implements ContainerFacto
     return $instance;
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function processItem($data): void {
     $embargo = $this->entityTypeManager->getStorage('embargo')->load($data['embargo_id']);
     if (!$embargo) {
@@ -93,4 +99,5 @@ class EmbargoExpirationReindex extends QueueWorkerBase implements ContainerFacto
       }
     }
   }
+  
 }
