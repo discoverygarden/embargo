@@ -1,0 +1,9 @@
+services:
+  reindex_embargoes.commands:
+    class: \Drupal\reindex_embargoes\Drush\Commands\ReindexEmbargoesCommands
+    arguments:
+      - '@entity_type.manager'
+      - '@queue'
+      - '@datetime.time'
+    tags:
+      - { name: drush.command }
