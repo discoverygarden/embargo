@@ -2,14 +2,43 @@
 
 namespace Drupal\reindex_embargoes\Form;
 
+use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\search_api\Entity\Index;
+use Drupal\search_api\IndexInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Form to configure which indexes to target.
  */
 class SettingsForm extends ConfigFormBase {
+
+  /**
+   * Entity type manager.
+   *
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   */
+  protected EntityTypeManagerInterface $entityTypeManager;
+
+  /**
+   * Constructor.
+   */
+  public function __construct(ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entity_type_manager, $typedConfigManager = NULL) {
+    parent::__construct($config_factory, $typedConfigManager);
+    $this->entityTypeManager = $entity_type_manager;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container) {
+    return new static(
+      $container->get('config.factory'),
+      $container->get('entity_type.manager'),
+    );
+  }
 
   /**
    * {@inheritdoc}
@@ -33,10 +62,16 @@ class SettingsForm extends ConfigFormBase {
   public function buildForm(array $form, FormStateInterface $form_state) {
     $config = $this->config('reindex_embargoes.settings');
 
-    $indexes = Index::loadMultiple();
+    $indexes = $this->entityTypeManager->getStorage('search_api_index')->loadMultiple();
     $options = [];
+
     foreach ($indexes as $index) {
-      $options[$index->id()] = $index->label();
+      if ($index instanceof IndexInterface) {
+        $options[$index->id()] = $index->label();
+        if (!$index->status()) {
+          $options[$index->id()] .= ' (' . $this->t('disabled') . ')';
+        }
+      }
     }
 
     $form['selected_indexes'] = [
