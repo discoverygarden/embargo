@@ -5,30 +5,42 @@
  * Hook implementations.
  */
 
-/**
- * Implements hook_cron().
- */
-function reindex_embargoes_cron(): void {
-  $entity_type_manager = \Drupal::entityTypeManager();
-  $queue_factory = \Drupal::service('queue');
+use Drupal\Component\Datetime\TimeInterface;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Queue\QueueFactory;
 
-  $request_time = \Drupal::time()->getRequestTime();
-  $next_day = $request_time + 86400;
-
-  // XXX: Dates are stored as varchar, so can't use date comparison.
-  $embargo_ids = $entity_type_manager->getStorage('embargo')->getQuery()
-    ->accessCheck(FALSE)
-    ->condition('embargoed_node', NULL, 'IS NOT NULL')
-    ->execute();
-
-  $queue = $queue_factory->get('embargo_expiration_reindex');
-  $embargoes = $entity_type_manager->getStorage('embargo')->loadMultiple($embargo_ids);
-  foreach ($embargoes as $embargo) {
-    $expiration_date = $embargo->getExpirationDate()->getTimestamp();
-    if ($expiration_date >= $request_time && $expiration_date < $next_day) {
-      $queue->createItem([
-        'embargo_id' => $embargo->id(),
-      ]);
-    }
+function _reindex_embargoes_queue_embargo(EntityInterface $entity, QueueFactory $queue_factory, TimeInterface $time): void {
+  $expiration_date = $entity->getExpirationDate();
+  if (!$expiration_date || !$expiration_date->getTimestamp()) {
+    return;
   }
+
+  $expiration_timestamp = $expiration_date->getTimestamp();
+  $current_timestamp = $time->getRequestTime();
+
+  if ($expiration_timestamp > $current_timestamp) {
+    $queue = $queue_factory->get('embargo_expiration_reindex', TRUE);
+
+    $item = ['embargo_id' => $entity->id()];
+
+    $queue->createItem($item);
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_insert().
+ */
+function reindex_embargoes_embargo_insert(EntityInterface $entity): void {
+  $queue_factory = \Drupal::service('queue');
+  $time = \Drupal::service('datetime.time');
+  _reindex_embargoes_queue_embargo($entity, $queue_factory, $time);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_update().
+ */
+function reindex_embargoes_embargo_update(EntityInterface $entity): void {
+  $queue_factory = \Drupal::service('queue');
+  $time = \Drupal::service('datetime.time');
+  _reindex_embargoes_queue_embargo($entity, $queue_factory, $time);
 }
