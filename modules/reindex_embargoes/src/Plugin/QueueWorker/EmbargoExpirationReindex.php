@@ -52,7 +52,7 @@ class EmbargoExpirationReindex extends QueueWorkerBase implements ContainerFacto
     $plugin_definition,
     EntityTypeManagerInterface $entity_type_manager,
     TimeInterface $time,
-    ConfigFactoryInterface $config_factory
+    ConfigFactoryInterface $config_factory,
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->entityTypeManager = $entity_type_manager;
