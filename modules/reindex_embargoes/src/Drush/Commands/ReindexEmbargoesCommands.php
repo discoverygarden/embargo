@@ -64,17 +64,9 @@ class ReindexEmbargoesCommands extends DrushCommands {
     $queued_count = 0;
 
     foreach ($embargoes as $embargo) {
-      $expiration_date_object = $embargo->getExpirationDate();
-      if (!$expiration_date_object || !$expiration_date_object->getTimestamp()) {
-        continue;
-      }
-      $expiration_timestamp = $expiration_date_object->getTimestamp();
-
-      if ($expiration_timestamp > $current_timestamp) {
-        $item = ['embargo_id' => $embargo->id()];
-        $queue->createItem($item);
-        $queued_count++;
-      }
+      $item = ['embargo_id' => $embargo->id()];
+      $queue->createItem($item);
+      $queued_count++;
     }
 
     $this->output()->writeln(dt("Successfully queued @count Embargoes for future re-indexing.", ['@count' => $queued_count]));
