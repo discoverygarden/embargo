@@ -48,8 +48,8 @@ class EmbargoExpirationReindex extends QueueWorkerBase implements ContainerFacto
    */
   public function __construct(
     array $configuration,
-          $plugin_id,
-          $plugin_definition,
+    $plugin_id,
+    $plugin_definition,
     EntityTypeManagerInterface $entity_type_manager,
     TimeInterface $time,
     ConfigFactoryInterface $config_factory

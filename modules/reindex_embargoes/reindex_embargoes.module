@@ -9,6 +9,9 @@ use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Queue\QueueFactory;
 
+/**
+ * Generic function to queue embargoes for reindexing.
+ */
 function _reindex_embargoes_queue_embargo(EntityInterface $entity, QueueFactory $queue_factory, TimeInterface $time): void {
   $expiration_date = $entity->getExpirationDate();
   if (!$expiration_date || !$expiration_date->getTimestamp()) {

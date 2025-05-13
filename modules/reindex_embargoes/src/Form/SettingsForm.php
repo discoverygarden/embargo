@@ -6,7 +6,6 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\search_api\Entity\Index;
 use Drupal\search_api\IndexInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 

@@ -26,13 +26,13 @@ class ReindexEmbargoesCommands extends DrushCommands {
     #[Autowire(service: 'queue')]
     protected QueueFactory $queueFactory,
     #[Autowire(service: 'datetime.time')]
-    protected TimeInterface $time
+    protected TimeInterface $time,
   ) {
     parent::__construct();
   }
 
   /**
-   * Populates the embargo expiration queue with existing future-dated embargoes.
+   * Populates the queue with existing future-dated embargoes.
    */
   #[CLI\Command(name: 'reindex_embargoes:populate-queue', aliases: ['r_e:pq'])]
   public function populateQueue(): void {
