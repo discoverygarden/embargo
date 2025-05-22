@@ -60,11 +60,10 @@ class ReindexEmbargoesCommands extends DrushCommands {
 
     $this->output()->writeln(dt("Found @count Embargoes with future expiration dates. Processing...", ['@count' => count($embargo_ids)]));
 
-    $embargoes = $embargo_storage->loadMultiple($embargo_ids);
     $queued_count = 0;
 
-    foreach ($embargoes as $embargo) {
-      $item = ['embargo_id' => $embargo->id()];
+    foreach ($embargo_ids as $embargo) {
+      $item = ['embargo_id' => $embargo];
       $queue->createItem($item);
       $queued_count++;
     }
