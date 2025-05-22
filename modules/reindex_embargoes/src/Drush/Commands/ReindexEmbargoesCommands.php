@@ -46,7 +46,7 @@ class ReindexEmbargoesCommands extends DrushCommands {
 
     $query = $embargo_storage->getQuery()
       ->accessCheck(FALSE)
-      ->condition('embargoed_node', NULL, 'IS NOT NULL')
+      ->exists('embargoed_node')
       ->condition('expiration_type', 1, '=')
       ->exists('expiration_date')
       ->condition('expiration_date', $current_iso, '>');
