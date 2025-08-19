@@ -45,7 +45,7 @@ trait EmbargoStorageTrait {
   public function getApplicableEmbargoes(EntityInterface $entity): array {
     assert($this instanceof SqlContentEntityStorage);
 
-    if ($entity instanceof NodeInterface) {
+    if ($entity instanceof NodeInterface && $entity->isNew() === FALSE) {
       $properties = ['embargoed_node' => $entity->id()];
       return $this->loadByProperties($properties);
     }
