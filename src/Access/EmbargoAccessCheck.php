@@ -89,7 +89,7 @@ class EmbargoAccessCheck implements EmbargoAccessCheckInterface {
         '1 embargo preventing access.',
         '@count embargoes preventing access.'
       )->render()
-    ));
+    )->addCacheContexts(['ip.embargo_range']));
 
   }
 
