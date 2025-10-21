@@ -69,3 +69,7 @@ services:
       - '@entity_type.manager'
     tags:
       - { name: 'cache.context' }
+  embargo.page_cache_request_policy.deny_ip_dependent_response:
+    class: Drupal\embargo\PageCache\DenyIpDependentResponse
+    tags:
+      { name: page_cache_response_policy }
