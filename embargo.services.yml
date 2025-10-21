@@ -72,4 +72,4 @@ services:
   embargo.page_cache_request_policy.deny_ip_dependent_response:
     class: Drupal\embargo\PageCache\DenyIpDependentResponse
     tags:
-      { name: page_cache_response_policy }
+      - { name: page_cache_response_policy }
