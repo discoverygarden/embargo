@@ -88,7 +88,7 @@ class EmbargoProcessor extends ProcessorPluginBase implements ContainerFactoryPl
   /**
    * {@inheritdoc}
    */
-  public function getPropertyDefinitions(DatasourceInterface $datasource = NULL) : array {
+  public function getPropertyDefinitions(?DatasourceInterface $datasource = NULL) : array {
     $properties = [];
 
     if ($datasource === NULL) {

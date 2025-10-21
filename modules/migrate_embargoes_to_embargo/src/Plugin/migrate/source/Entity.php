@@ -56,7 +56,7 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
     array $configuration,
     $plugin_id,
     $plugin_definition,
-    MigrationInterface $migration = NULL,
+    ?MigrationInterface $migration = NULL,
   ) {
     return new static(
       $configuration,

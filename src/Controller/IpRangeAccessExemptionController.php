@@ -25,7 +25,7 @@ class IpRangeAccessExemptionController extends ControllerBase {
    * @param \Symfony\Component\HttpFoundation\Request|null $request
    *   The current request.
    */
-  public function __construct(Request $request = NULL) {
+  public function __construct(?Request $request = NULL) {
     $this->request = $request;
   }
 
