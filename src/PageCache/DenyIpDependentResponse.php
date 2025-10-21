@@ -19,6 +19,16 @@ use Symfony\Component\HttpFoundation\Response;
 class DenyIpDependentResponse implements ResponsePolicyInterface {
 
   /**
+   * Cache contexts of which the presence should suppress page_cache.
+   */
+  protected const IP_CONTEXTS = [
+    'ip.embargo_range',
+    // XXX: `ip.embargo_range` could be optimized away if the `ip` context
+    // itself is added, so let's also account for it.
+    'ip',
+  ];
+
+  /**
    * {@inheritDoc}
    */
   public function check(Response $response, Request $request) : ?string {
@@ -37,7 +47,7 @@ class DenyIpDependentResponse implements ResponsePolicyInterface {
 
     $cache_contexts = $access_result->getCacheContexts();
 
-    if (array_intersect(['ip', 'ip.embargo_range'], $cache_contexts)) {
+    if (array_intersect(static::IP_CONTEXTS, $cache_contexts)) {
       // Access result has relevant context; avoiding page cache.
       return ResponsePolicyInterface::DENY;
     }
