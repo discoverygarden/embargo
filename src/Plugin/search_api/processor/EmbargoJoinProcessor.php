@@ -104,7 +104,7 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
   /**
    * {@inheritdoc}
    */
-  public function getPropertyDefinitions(DatasourceInterface $datasource = NULL) : array {
+  public function getPropertyDefinitions(?DatasourceInterface $datasource = NULL) : array {
     $properties = [];
 
     if ($datasource === NULL) {

@@ -4,7 +4,6 @@ namespace Drupal\embargo\Controller;
 
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Controller\ControllerBase;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -13,41 +12,19 @@ use Symfony\Component\HttpFoundation\Request;
 class IpRangeAccessExemptionController extends ControllerBase {
 
   /**
-   * The HTTP request.
-   *
-   * @var \Symfony\Component\HttpFoundation\Request
-   */
-  protected $request;
-
-  /**
-   * Constructs an IP access denied controller.
-   *
-   * @param \Symfony\Component\HttpFoundation\Request|null $request
-   *   The current request.
-   */
-  public function __construct(Request $request = NULL) {
-    $this->request = $request;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public static function create(ContainerInterface $container) {
-    return new static(
-      $container->get('request_stack')->getCurrentRequest());
-  }
-
-  /**
    * Formats a response for an IP access denied page.
+   *
+   * @param \Symfony\Component\HttpFoundation\Request $request
+   *   The request being served.
    *
    * @return array
    *   Renderable array of markup for IP access denied.
    */
-  public function response() {
+  public function response(Request $request) : array {
     $ranges = [];
     $cache_tags = [];
     /** @var \Drupal\embargo\IpRangeInterface[] $entities */
-    $entities = $this->entityTypeManager()->getStorage('embargo_ip_range')->loadMultiple($this->request->query->all()['ranges'] ?? []);
+    $entities = $this->entityTypeManager()->getStorage('embargo_ip_range')->loadMultiple($request->query->all()['ranges'] ?? []);
     foreach ($entities as $entity) {
       $ranges[] = [
         'label' => $entity->label(),
@@ -58,7 +35,7 @@ class IpRangeAccessExemptionController extends ControllerBase {
 
     return [
       '#theme' => 'embargo_ip_access_exemption',
-      '#resources' => $this->request->query->all()['resources'] ?? [],
+      '#resources' => $request->query->all()['resources'] ?? [],
       '#ranges' => $ranges,
       '#contact_email' => $this->config('embargo.settings')->get('contact_email'),
       '#cache' => [
