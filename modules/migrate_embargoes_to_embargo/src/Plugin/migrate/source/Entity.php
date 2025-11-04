@@ -143,7 +143,7 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
   /**
    * {@inheritdoc}
    */
-  public function rewind() {
+  public function rewind() : void {
     unset($this->iterator);
     $this->next();
   }
@@ -158,7 +158,7 @@ class Entity extends SourcePluginBase implements ContainerFactoryPluginInterface
   /**
    * {@inheritdoc}
    */
-  public function __sleep() {
+  public function __sleep() : array {
     $vars = parent::__sleep();
 
     $to_suppress = [
