@@ -65,7 +65,7 @@ class PermissionsMapKernelTest extends KernelTestBase {
    *   - the old permission from which we are mapping; and,
    *   - the new permission to which we are mapping.
    */
-  public function mapping() : array {
+  public static function mapping() : array {
     return [
       'admin' => ['administer embargoes settings', 'administer embargo'],
       'manage' => ['manage embargoes', 'manage embargo'],

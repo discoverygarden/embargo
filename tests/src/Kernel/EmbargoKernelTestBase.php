@@ -113,7 +113,7 @@ abstract class EmbargoKernelTestBase extends AbstractIslandoraKernelTestBase {
   /**
    * Data provider for media operations.
    */
-  public function providerMediaFileOperations(): array {
+  public static function providerMediaFileOperations(): array {
     return [
       'View' => ['view'],
       'Download' => ['download'],
@@ -123,7 +123,7 @@ abstract class EmbargoKernelTestBase extends AbstractIslandoraKernelTestBase {
   /**
    * Data provider for node operations.
    */
-  public function providerNodeOperations(): array {
+  public static function providerNodeOperations(): array {
     return [
       'View' => ['view'],
       'Edit' => ['edit'],
