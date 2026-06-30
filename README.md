@@ -46,6 +46,30 @@ results, including:
 
 Typically, only one should be used in any particular index.
 
+### Embargo Notification Block Configuration
+
+The Embargo Notifications Block provided by this module can be placed like any
+other Block, and it will only be visible if there is an Embargo entity associated
+with the content being viewed because otherwise it has nothing to display.
+For general information about managing and placing Blocks, see Drupal community
+documentation such as
+[Managing Blocks](https://www.drupal.org/docs/core-modules-and-themes/core-modules/block-module/managing-blocks)
+
+There is also a "Node is Embargoed" Condition provided by this module that can
+be used to set Block visibility for any Blocks based on the embargoed status of
+the node being viewed:
+
+- "Always trigger regardless of embargo status"
+- "All embargoes on node"
+- "Current embargoes on node (ignore expired)"
+- "Active embargoes on node (ignore bypassed)"
+
+If you would like the Embargo Notifications Block to stop displaying when a timed
+Embargo expires, you would want to set the "Node is Embargoed" block visibility
+condition to `Current embargoes on node (ignore expired)` or
+`Active embargoes on node (ignore bypassed)`, depending on whether you want the block
+displayed for users who have access to bypass the given Embargo.
+
 ## Usage
 
 ### Applying an embargo
