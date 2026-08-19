@@ -145,8 +145,8 @@ class EmbargoJoinProcessorEventSubscriber implements EventSubscriberInterface, C
             ),
             '!embargo_id' => $get_field_name('entity:embargo', 'id'),
             '!date_field' => $get_field_name('entity:embargo', 'expiration_date'),
-            '!date_value' => $helper->formatDate(strtotime('now')),
-            '!next_date_value' => $helper->formatDate(strtotime('now + 1day')),
+            '!date_value' => $helper->formatDate(strtotime('today')),
+            '!next_date_value' => $helper->formatDate(strtotime('tomorrow')),
             '!datasource_field' => $map['search_api_datasource'],
             '!datasources' => implode(',', array_map(
               function (string $source_id) {
