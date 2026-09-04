@@ -10,3 +10,4 @@ dependencies:
   - drupal:node
   - drupal:media
   - islandora_hierarchical_access:islandora_hierarchical_access
+  - search_api_solr:search_api_solr
