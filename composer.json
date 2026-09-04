@@ -6,8 +6,7 @@
     "license": "GPL-2.0-or-later",
     "require": {
         "discoverygarden/islandora_hierarchical_access": "^1",
-        "discoverygarden/update-helper": "^1",
-        "drupal/search_api_solr": "^4.2.4"
+        "discoverygarden/update-helper": "^1"
     },
     "require-dev": {
         "discoverygarden/islandora_test_support": "^1"
