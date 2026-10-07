@@ -5,6 +5,7 @@
  * Hook implementations.
  */
 
+use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Database\Query\AlterableInterface;
 use Drupal\Core\Entity\EntityInterface;
@@ -153,4 +154,19 @@ function embargo_media_delete(EntityInterface $entity) : void {
   /** @var \Drupal\embargo\SearchApiTracker $tracker */
   $tracker = \Drupal::service('embargo.search_api_tracker_helper');
   $tracker->mediaDeleteReaction($entity);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_access() for embargo entities.
+ */
+function embargo_embargo_access(EntityInterface $entity, $operation, AccountInterface $account) : AccessResultInterface {
+  return AccessResult::allowedIf(in_array($operation, ['view', 'edit', 'update', 'delete']))
+    ->andIf(AccessResult::allowedIfHasPermission($account, 'manage embargo'));
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_create_access() for embargo entities.
+ */
+function embargo_embargo_create_access(AccountInterface $account, array $context, string $entity_bundle): AccessResultInterface {
+  return AccessResult::allowedIfHasPermission($account, 'manage embargo');
 }
