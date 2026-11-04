@@ -109,8 +109,8 @@ class EmbargoJoinProcessorEventSubscriber implements EventSubscriberInterface, C
         'key' => "embargo_join:{$type}",
         'query' => strtr(
           implode(' ', [
-            '(!to_field:[* TO *] -!datasource_field:(!datasources))',
-            '(!to_field:[* TO *] -_query_:"!join!from_field:[* TO *]")',
+            '(*:* -!datasource_field:(!datasources))',
+            '(*:* -_query_:"!join!from_field:[* TO *]")',
             '_query_:"!join(',
             implode(' ', [
               '+(!from_field:[* TO *] -!type_field:\\"0\\")',
@@ -133,7 +133,6 @@ class EmbargoJoinProcessorEventSubscriber implements EventSubscriberInterface, C
               FALSE,
             ),
             '!from_field' => $get_field_name(NULL, $info['embargo path']),
-            '!to_field' => $get_field_name(NULL, $info['node path']),
             '!type_field' => $get_field_name('entity:embargo', 'expiration_type'),
             '!exempt_user_field' => $get_field_name('entity:embargo', 'exempt_users:entity:uid'),
             '!current_user' => $this->currentUser->id(),
