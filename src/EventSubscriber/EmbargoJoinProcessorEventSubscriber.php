@@ -123,9 +123,14 @@ class EmbargoJoinProcessorEventSubscriber implements EventSubscriberInterface, C
             $ip_range_entities ? '_query_:"!join!exempt_ip_field:(!exempt_ip_ranges)"' : '',
           ]),
           [
-            '!join' => $helper->join(
-              $get_field_name(NULL, $info['embargo path']),
-              $get_field_name(NULL, $info['node path']),
+            '!join' => $helper->qparser(
+              'join',
+              [
+                'from' => $get_field_name(NULL, $info['embargo path']),
+                'to' => $get_field_name(NULL, $info['node path']),
+              ] + ($info['extra join properties'] ?? []),
+              FALSE,
+              FALSE,
             ),
             '!type_field' => $get_field_name('entity:embargo', 'expiration_type'),
             '!exempt_user_field' => $get_field_name('entity:embargo', 'exempt_users:entity:uid'),
