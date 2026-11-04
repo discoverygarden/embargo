@@ -320,7 +320,7 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
       return;
     }
 
-    if ($this->configuration['use_cross_collection_join']) {
+    if ($this->configuration['use_cross_collection_join'] ?? FALSE) {
       $collection = $this->index->getThirdPartySettings('search_api_solr')['advanced']['collection'] ?: $this->index->getServerInstance()->getBackendConfig()['connector_config']['core'];
       foreach ($queries as &$q) {
         $q['extra join properties'] = [
