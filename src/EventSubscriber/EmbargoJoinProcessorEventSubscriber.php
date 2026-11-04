@@ -109,14 +109,14 @@ class EmbargoJoinProcessorEventSubscriber implements EventSubscriberInterface, C
         'key' => "embargo_join:{$type}",
         'query' => strtr(
           implode(' ', [
-            '(*:* -!datasource_field:(!datasources))',
-            '(*:* -_query_:"!join*:*")',
+            '(!to_field:[* TO *] -!datasource_field:(!datasources))',
+            '(!to_field:[* TO *] -_query_:"!join!from_field:[* TO *]")',
             '_query_:"!join(',
             implode(' ', [
-              '+(*:* -!type_field:\\"0\\")',
+              '+(!from_field:[* TO *] -!type_field:\\"0\\")',
               '+!type_field:\\"1\\"',
               '+!date_field:[* TO \\"!date_value\\"]',
-              '+(*:* -!date_field:[\\"!next_date_value\\" TO *])',
+              '+(!from_field:[* TO *] -!date_field:[\\"!next_date_value\\" TO *])',
             ]),
             ')"',
             '!join!exempt_user_field:"!current_user"',
@@ -132,6 +132,8 @@ class EmbargoJoinProcessorEventSubscriber implements EventSubscriberInterface, C
               FALSE,
               FALSE,
             ),
+            '!from_field' => $get_field_name(NULL, $info['embargo path']),
+            '!to_field' => $get_field_name(NULL, $info['node path']),
             '!type_field' => $get_field_name('entity:embargo', 'expiration_type'),
             '!exempt_user_field' => $get_field_name('entity:embargo', 'exempt_users:entity:uid'),
             '!current_user' => $this->currentUser->id(),
