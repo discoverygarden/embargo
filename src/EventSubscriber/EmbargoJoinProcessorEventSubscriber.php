@@ -141,7 +141,7 @@ class EmbargoJoinProcessorEventSubscriber implements EventSubscriberInterface, C
               array_map(
                 $helper->escapeTerm(...),
                 array_map(
-                  function ($range) {
+                  static function ($range) {
                     return $range->id();
                   },
                   $ip_range_entities
@@ -154,7 +154,7 @@ class EmbargoJoinProcessorEventSubscriber implements EventSubscriberInterface, C
             '!next_date_value' => $helper->formatDate(strtotime('tomorrow')),
             '!datasource_field' => $map['search_api_datasource'],
             '!datasources' => implode(',', array_map(
-              function (string $source_id) {
+              static function (string $source_id) {
                 return strtr('"!source"', [
                   '!source' => $source_id,
                 ]);
