@@ -110,23 +110,29 @@ class EmbargoJoinProcessorEventSubscriber implements EventSubscriberInterface, C
         'query' => strtr(
           implode(' ', [
             '(*:* -!datasource_field:(!datasources))',
-            '(*:* -_query_:"!join*:*")',
+            '(*:* -_query_:"!join!from_field:[* TO *]")',
             '_query_:"!join(',
             implode(' ', [
-              '+(*:* -!type_field:\\"0\\")',
+              '+(!from_field:[* TO *] -!type_field:\\"0\\")',
               '+!type_field:\\"1\\"',
               '+!date_field:[* TO \\"!date_value\\"]',
-              '+(*:* -!date_field:[\\"!next_date_value\\" TO *])',
+              '+(!from_field:[* TO *] -!date_field:[\\"!next_date_value\\" TO *])',
             ]),
             ')"',
             '!join!exempt_user_field:"!current_user"',
             $ip_range_entities ? '_query_:"!join!exempt_ip_field:(!exempt_ip_ranges)"' : '',
           ]),
           [
-            '!join' => $helper->join(
-              $get_field_name(NULL, $info['embargo path']),
-              $get_field_name(NULL, $info['node path']),
+            '!join' => $helper->qparser(
+              'join',
+              [
+                'from' => $get_field_name(NULL, $info['embargo path']),
+                'to' => $get_field_name(NULL, $info['node path']),
+              ] + ($info['extra join properties'] ?? []),
+              FALSE,
+              FALSE,
             ),
+            '!from_field' => $get_field_name(NULL, $info['embargo path']),
             '!type_field' => $get_field_name('entity:embargo', 'expiration_type'),
             '!exempt_user_field' => $get_field_name('entity:embargo', 'exempt_users:entity:uid'),
             '!current_user' => $this->currentUser->id(),
@@ -136,7 +142,7 @@ class EmbargoJoinProcessorEventSubscriber implements EventSubscriberInterface, C
               array_map(
                 $helper->escapeTerm(...),
                 array_map(
-                  function ($range) {
+                  static function ($range) {
                     return $range->id();
                   },
                   $ip_range_entities
@@ -149,7 +155,7 @@ class EmbargoJoinProcessorEventSubscriber implements EventSubscriberInterface, C
             '!next_date_value' => $helper->formatDate(strtotime('tomorrow')),
             '!datasource_field' => $map['search_api_datasource'],
             '!datasources' => implode(',', array_map(
-              function (string $source_id) {
+              static function (string $source_id) {
                 return strtr('"!source"', [
                   '!source' => $source_id,
                 ]);

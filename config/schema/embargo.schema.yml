@@ -15,3 +15,11 @@ embargo.settings:
     notification_message:
       type: text
       label: 'Embargo notification message'
+
+plugin.plugin_configuration.search_api_processor.embargo_join_processor:
+  type: search_api.default_processor_configuration
+  mapping:
+    use_cross_collection_join:
+      type: boolean
+    cross_collection_ttl:
+      type: integer

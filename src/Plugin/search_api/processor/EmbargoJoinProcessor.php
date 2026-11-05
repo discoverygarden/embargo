@@ -6,17 +6,23 @@ use Drupal\Core\Cache\RefinableCacheableDependencyInterface;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\Core\Plugin\PluginFormInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\embargo\EmbargoInterface;
 use Drupal\islandora_hierarchical_access\LUTGeneratorInterface;
 use Drupal\search_api\Datasource\DatasourceInterface;
 use Drupal\search_api\IndexInterface;
 use Drupal\search_api\Item\ItemInterface;
+use Drupal\search_api\Plugin\PluginFormTrait;
 use Drupal\search_api\Processor\ProcessorPluginBase;
 use Drupal\search_api\Processor\ProcessorProperty;
 use Drupal\search_api\Query\QueryInterface;
 use Drupal\search_api\SearchApiException;
+use Drupal\search_api_solr\SolrBackendInterface;
+use Psr\Log\LoggerAwareInterface;
+use Psr\Log\LoggerAwareTrait;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
@@ -36,7 +42,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
  *   hidden = false,
  * )
  */
-class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFactoryPluginInterface {
+class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFactoryPluginInterface, PluginFormInterface, LoggerAwareInterface {
 
   const ENTITY_TYPES = ['file', 'media', 'node'];
   const ALL_ENTITY_TYPES = ['file', 'media', 'node', 'embargo'];
@@ -44,6 +50,9 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
   const NODE_FIELD = 'embargo__node';
   const EMBARGO_FIELD_NODE = 'embargo__node__node';
   const EMBARGO_FIELD_FILE = 'embargo__node__file';
+
+  use LoggerAwareTrait;
+  use PluginFormTrait;
 
   /**
    * The currently logged-in user.
@@ -77,14 +86,45 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
-    $instance = new static($configuration, $plugin_id, $plugin_definition);
-
-    $instance->currentUser = $container->get('current_user');
-    $instance->database = $container->get('database');
-    $instance->entityTypeManager = $container->get('entity_type.manager');
-    $instance->requestStack = $container->get('request_stack');
-
+    $instance = parent::create($container, $configuration, $plugin_id, $plugin_definition)
+      ->setCurrentUser($container->get('current_user'))
+      ->setDatabase($container->get('database'))
+      ->setEntityTypeManager($container->get('entity_type.manager'))
+      ->setRequestStack($container->get('request_stack'));
+    $instance->setLogger($container->get('logger.channel.embargo'));
     return $instance;
+  }
+
+  /**
+   * Setter; set the current user.
+   */
+  public function setCurrentUser(AccountProxyInterface $user) : static {
+    $this->currentUser = $user;
+    return $this;
+  }
+
+  /**
+   * Setter; set the database connection service.
+   */
+  public function setDatabase(Connection $database) : static {
+    $this->database = $database;
+    return $this;
+  }
+
+  /**
+   * Setter; set the entity type manager service.
+   */
+  public function setEntityTypeManager(EntityTypeManagerInterface $entityTypeManager) : static {
+    $this->entityTypeManager = $entityTypeManager;
+    return $this;
+  }
+
+  /**
+   * Setter; set the request stack service.
+   */
+  public function setRequestStack(RequestStack $requestStack) : static {
+    $this->requestStack = $requestStack;
+    return $this;
   }
 
   /**
@@ -95,7 +135,7 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
       in_array('entity:embargo', $index->getDatasourceIds()) &&
       array_intersect(
         $index->getDatasourceIds(),
-        array_map(function (string $type) {
+        array_map(static function (string $type) {
           return "entity:{$type}";
         }, static::ENTITY_TYPES)
       );
@@ -174,17 +214,16 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
     if ($entity->getEntityTypeId() === 'node') {
       return [$entity->id()];
     }
-    else {
-      $column = match ($entity->getEntityTypeId()) {
-        'media' => 'mid',
-        'file' => 'fid',
-      };
-      return $this->database->select(LUTGeneratorInterface::TABLE_NAME, 'lut')
-        ->fields('lut', ['nid'])
-        ->condition("lut.{$column}", $entity->id())
-        ->execute()
-        ->fetchCol();
-    }
+
+    $column = match ($entity->getEntityTypeId()) {
+      'media' => 'mid',
+      'file' => 'fid',
+    };
+    return $this->database->select(LUTGeneratorInterface::TABLE_NAME, 'lut')
+      ->fields('lut', ['nid'])
+      ->condition("lut.{$column}", $entity->id())
+      ->execute()
+      ->fetchCol();
   }
 
   /**
@@ -256,6 +295,31 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
   }
 
   /**
+   * Helper; get the name of the collection.
+   *
+   * @return string|null
+   *   The name of the collection; otherwise, NULL.
+   */
+  protected function getCollection() : ?string {
+    try {
+      if ($backend = $this->index->getServerInstance()?->getBackend()) {
+        assert($backend instanceof SolrBackendInterface);
+        if (!$backend->getSolrConnector()->isCloud()) {
+          $this->logger->notice('Attempted to determine collection of non-cloud Solr index.', ['index' => $this->index->id()]);
+          return NULL;
+        }
+        return $backend->getCollectionEndpoint($this->index)->getCollection() ?? $this->index->getServerInstance()->getBackendConfig()['connector_config']['core'] ?? NULL;
+      }
+
+      return NULL;
+    }
+    catch (SearchApiException $e) {
+      $this->logger->notice('Exception determining collection.', ['exception' => $e]);
+      return NULL;
+    }
+  }
+
+  /**
    * {@inheritDoc}
    */
   public function preprocessSearchQuery(QueryInterface $query) : void {
@@ -286,6 +350,17 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
       return;
     }
 
+    if (($this->configuration['use_cross_collection_join'] ?? FALSE) && $this->isCompatibleCloud() && ($collection = $this->getCollection())) {
+      foreach ($queries as &$q) {
+        $q['extra join properties'] = [
+          'method' => 'crossCollection',
+          'fromIndex' => $collection,
+          'ttl' => $this->configuration['cross_collection_ttl'],
+        ];
+      }
+      unset($q);
+    }
+
     /** @var \Drupal\embargo\IpRangeInterface[] $ip_range_entities */
     $ip_range_entities = $this->entityTypeManager->getStorage('embargo_ip_range')
       ->getApplicableIpRanges($this->requestStack->getCurrentRequest()->getClientIp());
@@ -310,6 +385,62 @@ class EmbargoJoinProcessor extends ProcessorPluginBase implements ContainerFacto
     $query->addTag('embargo_join_processor');
     $query->setOption('embargo_join_processor__ip_ranges', $ip_range_entities);
     $query->setOption('embargo_join_processor__queries', $queries);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  public function defaultConfiguration() {
+    $config = parent::defaultConfiguration();
+
+    $config['use_cross_collection_join'] = FALSE;
+    $config['cross_collection_ttl'] = 3600;
+
+    return $config;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
+    $is_compatible_cloud = $this->isCompatibleCloud();
+    $form['use_cross_collection_join'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Use cross-collection join?'),
+      '#description' => $this->t('Cross-collection joins can avoid issue where the index is sharded.'),
+      '#default_value' => $this->configuration['use_cross_collection_join'],
+      '#disabled' => !$is_compatible_cloud,
+    ];
+    $form['cross_collection_ttl'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Cross-collection join TTL, in seconds.'),
+      '#description' => $this->t('Cross-collection joins programmatically perform queries, which get cached. Solr default is 3600 seconds (1 hour). Irrelevant if not using cross-collection joins.'),
+      '#default_value' => $this->configuration['cross_collection_ttl'],
+      '#disabled' => !$is_compatible_cloud,
+    ];
+
+    return $form;
+  }
+
+  /**
+   * Helper; determine if the backend connection is cross-collection compatible.
+   *
+   * @return bool|null
+   *   TRUE if compatible, FALSE if not, NULL if we failed to probe.
+   */
+  protected function isCompatibleCloud() : ?bool {
+    try {
+      $backend = $this->index->getServerInstance()?->getBackend();
+      if (!$backend instanceof SolrBackendInterface) {
+        return FALSE;
+      }
+      $connector = $backend->getSolrConnector();
+      return $connector->isCloud() && version_compare($connector->getSolrVersion(), '8.6.0') >= 0;
+    }
+    catch (SearchApiException $e) {
+      $this->logger->warning('Exception checking for cloud compatibility.', ['exception' => $e]);
+      return NULL;
+    }
   }
 
 }
